@@ -1,0 +1,52 @@
+{
+    "and" : [
+        ":hd::g1::j1::g0::g0::g0::g0:\n:g0::g0::fk::eb::g1::j6::hx:\n:hd::g1::j1::g0::g0::g0::g0:"
+    ],
+    "xor" : [
+        ":hd::g1::g1::j6::g0::g0:\n:g0::g0::g0::0k::0b::hx:\n:hd::g1::g1::j6::g0::g0:",
+        ":g0::j4::fg::g0::g0::g0:\n:g0::g1::j6::g0::g0::g0:\n:g0::j4::fd::g0::g0::g0:",
+        ":g0::g1::g0::g0::g0::g0:\n:g0::fa::g0::g0::g0::g0:\n:g0::g1::g0::g0::g0::g0:"
+    ],
+    "rs" : [
+        ":g0::g0::0m::0m::gf::h6:\n:h5::jc::g1::g1::g0::g0:\n:go::fm::g1::je::0m::hx:"
+    ],
+    "tff" : [
+        ":h8::gf::g0::g0:\n:g0::0m::0m::g0:\n:jc::g1::g1::ja:\n:k7::hz::kj::kn:\n:g0::g0::hx::g0:"
+    ],
+    "dpe_h" : [
+        ":g0::g1::k9::k9:\n:g0::0a::ia3::ia1:\n:hd::g1::0e::0d:"
+    ],
+    "dpe_v" : [
+        ":g1::g1:\n:ji::k6:\n:ibb::k6:"
+    ],
+    "jeb": [
+        ":kl::kh::km::km::kj::kn:\n:kl::kh::ki::ki::kj::kn:\n:gq::gq::gq::gq::gq::gq:",
+        ":kl::kh::km::km::kj::kn:\n:kl::kh::ki::ki::kj::kn:\n:gq::gq::gq::gq::gq::gq:",
+        ":g1::g1::gq::gq::g1::g1:\n:g1::g0::gq::gq::g0::g1:\n:gq::gq::gq::gq::gq::gq:",
+        ":ff::id5::fj::eb::ib5::fg:\n:ec::g0::j0::g0::g0::ec:\n:gq::gq::gf::gq::gq::gq:\n\nWarning: This version uses QC and thus only works on the Java edition."
+    ],
+    "3x3" : [
+        ":ih4::0m::gf::k8::jj::g1::ib9:\n:jk::ji::k8::k8::id9::g1::jk:\n:g5::ibb::g1::g1::g1::ji::g1:\n:jk::g1::g0::g0::g0::g1::k9:\n:k7::g1::g0::g0::g0::g1::k9:\n:k7::g1::g0::g0::g0::g1::k9:\n:jk::g8::g1::g1::g1::k9::ji:\n:hx::jj::jj::k6::jj::g1::hx:"
+    ],
+    "2hffh" : [
+        "2 high full floor hipster door by ReversedGravity:\n:gq::gq::gq::gq::gq::gq::gq::gq::gq:\n:g0::k1::hz::gq::k6::ji::g0::k3::gj:\n:hh::g5::ibb::jj::k6::idb::jl::l0::ji:\n:g0::jk::jj::jj::k6::jj::jj::jj::jj:"
+    ],
+    "filter" : [
+        ":g0::lm::g0::g0::g0:\n:g0::ll::if5::1m::g0:\n:ln::ln::g1::g1::0n:\n:g0::jc::g1::id8::g1:\n:g0::g0::g0::g1::g0:"
+    ],
+    "flying": [
+        ":g0::k7::g6::jl:\n:jj::g6::k9::g0:"
+    ],
+    "floortape": [
+        ":g1::jl::g5::g0::g1:\n:k8::jk::ji::g0::ji:\n:jk::ka::ka::ka::hx:\n:g0::ka::g1::ka::ji:\n:g1::ka::ka::ka::g5:\n:g5::jj::jj::g1::g1:",
+        ":jl::jm::k8::k2::0a:\n:jk::g0::g0::g0::k9:\n:k1::g0::g0::g0::0a:\n:g0::g0::jn::g0::jk:\n:g0::g0::g0::g0::k3:\n:g0::k0::jl::0b::0b:",
+        ":g4::g4::g4::g4::g4:\n:g4::g4::g4::g4::g4:\n:g4::g1::g1::g1::g4:\n:g4::g1::hx::g1::g4:\n:g4::g1::g1::g1::g4:\n:g4::g4::g4::g4::g4:\n\nFloor piston tape by cmoa"
+    ],
+    "popcraft": [
+        ":g1::g0::g0::g0::g0:\n:g0::g1::g0::g1::g0:\n:jk::g0::g0::g0::jk:\n:g2::g0::ka::g1::g2:\n:ka::g5::g1::g2::ka:",
+        ":ia3::g0::g0::g0::g0:\n:g1::id3::g5::0b::g1:\n:g0::k7::g0::jk::kp:\n:ic0::g0::ka::ic3::ic0:\n:ji::jm::0b::0d::g0:",
+        ":jm::jj::jj::g5::g0:\n:jk::g0::0b::jk::j4:\n:kb::g0::jn::k9::kb:\n:k1::g2::g0::g0::k3:\n:g0::0a::g1::g0::ji:",
+        ":g4::g4::g4::g4::g4:\n:g4::g4::g1::g4::g4:\n:g4::g4::g4::g4::g4:\n:g4::g4::g0::g4::g4:\n:g4::g4::g4::g4::g4:",
+        ":g0::g0::g0::g0::g0:\n:g0::g0::h4::g0::g0:\n:g0::g0::g0::g0::g0:\n:g0::g0::gr::g0::g0:\n:g0::g0::g0::g0::g0:\n\nPopup crafting table by cmoa"
+    ]
+}
