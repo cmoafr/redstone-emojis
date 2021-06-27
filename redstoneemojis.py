@@ -1,4 +1,5 @@
 import discord
+import json
 from discord.ext import commands
 from discord_slash import SlashCommand, SlashContext
 from discord_slash.utils import manage_commands
@@ -7,7 +8,6 @@ from discord_slash.utils import manage_commands
 
 bot = commands.Bot(command_prefix=None)
 slash = SlashCommand(bot, sync_commands=True)
-token = None
 
 
 @bot.event
@@ -24,7 +24,7 @@ async def on_ready():
 # Commands
 
 @slash.slash(name="help", description="Shows the list of all commands.")
-async def _help(ctx, guild_ids=[460515591900495873]):
+async def _help(ctx):
     embed = discord.Embed()
     ordered = sorted(command_list, key=lambda cmd: cmd["name"])
     for cmd in ordered:
@@ -39,17 +39,21 @@ async def _help(ctx, guild_ids=[460515591900495873]):
 # Run
 
 try:
-    with open("token") as f:
-        token = f.read()
+    with open("settings.json") as f:
+        settings = json.load(f)
 except FileNotFoundError:
-    with open("token", "w"):
-        pass
-    raise FileNotFoundError("Token file not found. Please put your Discord bot token in the newly created file.")
+    with open("settings.json", "w") as f:
+        f.write("""{
+    \"token\": \"INSERT YOUR TOKEN HERE\"
+}""")
+    raise FileNotFoundError("Settings file not found. Please put your Discord bot token in the newly created file.")
 
-if token == "":
-    raise RuntimeError("No token found. Please create a bot at https://discord.com/developers/applications and paste the token in the corresponding file.")
+if settings["token"] == "":
+    raise RuntimeError("No token found. Please create a bot at https://discord.com/developers/applications and paste the token in the settings file.")
 
 try:
-    bot.run(token)
+    bot.run(settings["token"])
 except discord.errors.LoginFailure:
-    raise RuntimeError("Invalid token. Please verify the \"token\" file.")
+    raise RuntimeError("Invalid token. Please verify the settings file.")
+except Exception as e:
+    raise e

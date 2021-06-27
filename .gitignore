@@ -1,2 +1,2 @@
-# Ignore token file
-token
+# Ignore settings file with private values
+settings.json
