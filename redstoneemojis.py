@@ -16,6 +16,10 @@ async def on_ready():
     global command_list, emojis
     command_list = await manage_commands.get_all_commands(bot.user.id, settings["token"])
     del settings["token"]
+    emojis = []
+    for guild_id in settings["emojis guilds ids"]:
+        emojis += bot.get_guild(guild_id).emojis
+    emojis.sort(key=lambda e: e.name)
     print("Connected on {} guilds with {} commands.".format(len(bot.guilds), len(command_list)))
 
 
@@ -33,6 +37,21 @@ async def help(ctx):
         embed.add_field(name="/"+name, value=description, inline=False)
     await ctx.send(embed=embed)
 
+@slash.slash(name="emojis", description="Shows all emojis.\nWarning: Will spam. Use in appropriate channel.", guild_ids=[460515591900495873])
+async def emojis(ctx):
+    if len(emojis) == 0:
+        await ctx.send("Error: No emojis found.")
+        return
+    message = ""
+    for i, emoji in enumerate(emojis):
+        if i%60 == 0 and message:
+            await ctx.send(message)
+            if i == 60:
+                ctx = ctx.channel
+            message = ""
+        message += "<:{}:{}>".format(emoji.name, emoji.id)
+    await ctx.send(message)
+
 
 
 
@@ -46,6 +65,7 @@ except FileNotFoundError:
     with open("settings.json", "w") as f:
         f.write("""{
     \"token\": \"INSERT YOUR TOKEN HERE\"
+    \"emojis guilds ids\": []
 }""")
     raise FileNotFoundError("Settings file not found. Please put your Discord bot token in the newly created file.")
 
