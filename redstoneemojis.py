@@ -6,15 +6,16 @@ from discord_slash.utils import manage_commands
 
 
 
-bot = commands.Bot(command_prefix=None)
+no_prefix = lambda bot, message: '<' if message.content.startswith('>') else '>'
+bot = commands.Bot(command_prefix=no_prefix)
 slash = SlashCommand(bot, sync_commands=True)
 
 
 @bot.event
 async def on_ready():
-    global command_list, token
+    global command_list, emojis
     command_list = await manage_commands.get_all_commands(bot.user.id, settings["token"])
-    del token
+    del settings["token"]
     print("Connected on {} guilds with {} commands.".format(len(bot.guilds), len(command_list)))
 
 
@@ -24,7 +25,7 @@ async def on_ready():
 # Commands
 
 @slash.slash(name="help", description="Shows the list of all commands.")
-async def _help(ctx):
+async def help(ctx):
     embed = discord.Embed()
     ordered = sorted(command_list, key=lambda cmd: cmd["name"])
     for cmd in ordered:
