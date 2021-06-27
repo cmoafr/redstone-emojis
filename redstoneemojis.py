@@ -13,7 +13,7 @@ slash = SlashCommand(bot, sync_commands=True)
 @bot.event
 async def on_ready():
     global command_list, token
-    command_list = await manage_commands.get_all_commands(bot.user.id, token)
+    command_list = await manage_commands.get_all_commands(bot.user.id, settings["token"])
     del token
     print("Connected on {} guilds with {} commands.".format(len(bot.guilds), len(command_list)))
 
