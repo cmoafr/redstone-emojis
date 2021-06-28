@@ -19,14 +19,23 @@ emoji_pattern = re.compile(":[a-zA-Z0-9]{2,32}:")
 
 @bot.event
 async def on_ready():
-    global command_list, emojis, emojis_dict
     command_list = await manage_commands.get_all_commands(bot.user.id, settings["token"])
     del settings["token"]
+
     emojis = []
     for guild_id in settings["emojis guilds ids"]:
         emojis += bot.get_guild(guild_id).emojis
     emojis.sort(key=lambda e: e.name)
     emojis_dict = {e.name:e for e in emojis}
+
+    await bot.change_presence(
+        status=discord.Status.online,
+        activity=discord.Activity(
+            type=discord.ActivityType.playing,
+            name="with redstone! Use /help"
+        )
+    )
+    
     print("Connected on {} guilds with {} commands.".format(len(bot.guilds), len(command_list)))
 
 
@@ -37,11 +46,17 @@ async def on_ready():
 
 @slash.slash(name="help", description="Shows the list of all commands.")
 async def help(ctx):
-    embed = discord.Embed()
     ordered = sorted(command_list, key=lambda cmd: cmd["name"])
+    embed = discord.Embed(
+        title="Commands:",
+        color=0xff0000
+    )
     for cmd in ordered:
-        name, description = cmd["name"], cmd["description"]
-        embed.add_field(name="/"+name, value=description, inline=False)
+        embed.add_field(
+            name="/" + cmd["name"],
+            value=cmd["description"],
+            inline=False
+        )
     await ctx.send(embed=embed)
 
 
@@ -97,6 +112,24 @@ async def emojis(ctx):
             message = ""
         message += "<:{}:{}>".format(emoji.name, emoji.id)
     await ctx.send(message)
+
+
+
+@slash.slash(name="github", description="Link to the Github of this bot")
+async def github(ctx):
+    embed = discord.Embed(
+        title="cmoafr/redstone-emojis",
+        url="https://github.com/cmoafr/redstone-emojis",
+        description="Here you go :)",
+        color=0xff0000
+    )
+    embed.set_author(
+        name="GitHub",
+        url="https://github.com",
+        icon_url="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+    )
+    embed.set_thumbnail(url="https://avatars.githubusercontent.com/u/43421239")
+    await ctx.send(embed=embed)
 
 
 
