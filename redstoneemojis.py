@@ -1,5 +1,6 @@
 import discord
 import json
+import re
 from discord.ext import commands
 from discord_slash import SlashCommand, SlashContext
 from discord_slash.utils import manage_commands
@@ -10,16 +11,22 @@ no_prefix = lambda bot, message: '<' if message.content.startswith('>') else '>'
 bot = commands.Bot(command_prefix=no_prefix)
 slash = SlashCommand(bot, sync_commands=True)
 
+emoji_full_pattern = re.compile("<:[a-zA-Z0-9]{2,32}:[0-9]*>")
+emoji_pattern = re.compile(":[a-zA-Z0-9]{2,32}:")
+
+
+
 
 @bot.event
 async def on_ready():
-    global command_list, emojis
+    global command_list, emojis, emojis_dict
     command_list = await manage_commands.get_all_commands(bot.user.id, settings["token"])
     del settings["token"]
     emojis = []
     for guild_id in settings["emojis guilds ids"]:
         emojis += bot.get_guild(guild_id).emojis
     emojis.sort(key=lambda e: e.name)
+    emojis_dict = {e.name:e for e in emojis}
     print("Connected on {} guilds with {} commands.".format(len(bot.guilds), len(command_list)))
 
 
@@ -37,7 +44,46 @@ async def help(ctx):
         embed.add_field(name="/"+name, value=description, inline=False)
     await ctx.send(embed=embed)
 
-@slash.slash(name="emojis", description="Shows all emojis.\nWarning: Will spam. Use in appropriate channel.", guild_ids=[460515591900495873])
+
+
+@slash.slash(name="echo", description="Send back the message with the correct format.", options=[
+    manage_commands.create_option(name="message", description="Message to be formated and echoed back", option_type=3, required=True)
+])
+async def echo(ctx, message):
+    
+    formated = ""
+    re_all = [(x.start(), x.end()) for x in re.finditer(":[a-zA-Z0-9_]{2,32}:", message)]
+    re_formated = [(x.start(), x.end()) for x in re.finditer("<:[a-zA-Z0-9_]{2,32}:[0-9]*>", message)]
+    index = 0
+
+    # Replace emojis
+    for start, end in re_all:
+        for start_, end_ in re_formated:
+            if start >= start_ and end <= end_: # Is formated
+                sub = message[start_+2:end_-1]
+                name, id_ = sub.split(":")
+                if name in emojis_dict and emojis_dict[name].id == int(id_): # Is known
+                    formated += message[index:end_]
+                else: # Is unkown
+                    formated += message[index:start_] + ":" + name + ":"
+                index = end_
+                break
+        else: # Is not formated
+            name = message[start+1:end-1]
+            if name in emojis_dict: # Is known
+                formated += message[index:start] + "<:" + name + ":" + str(emojis_dict[name].id) + ">"
+            else: # Is unkown
+                formated += message[index:end]
+            index = end
+    if index < len(message):
+        formated += message[index:]
+    
+    formated = formated.replace("\\n", "\n")
+    await ctx.send(formated)
+
+
+
+@slash.slash(name="emojis", description="Shows all emojis.\nWarning: Will spam. Use in appropriate channel.")
 async def emojis(ctx):
     if len(emojis) == 0:
         await ctx.send("Error: No emojis found.")
