@@ -7,6 +7,15 @@ from discord_slash.utils import manage_commands
 
 
 
+EMPTY = "\u200b"
+
+no_prefix = lambda bot, message: '<' if message.content.startswith('>') else '>'
+
+emoji_full_pattern = re.compile("<:[a-zA-Z0-9_]{2,32}:[0-9]*>")
+emoji_pattern = re.compile(":[a-zA-Z0-9_]{2,32}:")
+
+
+
 
 
 class Option:
@@ -23,7 +32,7 @@ class Option:
         else:
             usage = self.name
             if self.choices:
-                usage = "|".join()
+                usage = "|".join(choice["name"] for choice in self.choices)
             # TODO: Handle subcommands and groups
             if self.required:
                 self.usage = "<" + usage + ">"
@@ -43,11 +52,11 @@ class Command:
         self.kwargs = kwargs
         
         if description[0] == '\n':
-            self.description = description.strip() or " "
+            self.description = description.strip() or EMPTY
             self.usage = usage or self.get_default_usage()
         else:
             split = description.split('\n')
-            self.description = '\n'.join(split[1:]).strip() or " "
+            self.description = '\n'.join(split[1:]).strip() or EMPTY
             self.usage = usage or split[0]
 
     def register(self, slash):
@@ -84,13 +93,27 @@ class Commands:
 
 
 
-no_prefix = lambda bot, message: '<' if message.content.startswith('>') else '>'
 bot = Bot(command_prefix=no_prefix)
 slash = SlashCommand(bot, sync_commands=True)
 commands = Commands(slash)
 
-emoji_full_pattern = re.compile("<:[a-zA-Z0-9_]{2,32}:[0-9]*>")
-emoji_pattern = re.compile(":[a-zA-Z0-9_]{2,32}:")
+default_settings = '''{
+    "token": "INSERT YOUR TOKEN HERE"
+    "emojis guilds ids": [],
+    "discord links": {
+        "Bot": "https://discord.gg/e5Jag3kuxq"
+    }
+}'''
+
+
+
+try:
+    with open("settings.json") as f:
+        settings = json.load(f)
+except FileNotFoundError:
+    with open("settings.json", "w") as f:
+        f.write()
+    raise FileNotFoundError("Settings file not found. Please put your Discord bot token in the newly created file.")
 
 
 
@@ -126,19 +149,19 @@ async def on_ready():
 @commands.register()
 async def help(ctx):
     """
-Shows the list of all commands
-"""
+    Shows the list of all commands
+    """
+    global embed
     ordered = sorted(commands.list, key=lambda cmd: cmd.name)
     embed = discord.Embed(
         title="Commands:",
         color=0xff0000
     )
-    print("test")
     for cmd in ordered:
         if not (cmd.hidden and not ctx.author.top_role.permissions.administrator):
             embed.add_field(
-                name=cmd.usage,
-                value=cmd.description,
+                name=cmd.usage or "Error",
+                value=cmd.description or EMPTY,
                 inline=False
             )
     await ctx.send(embed=embed)
@@ -153,8 +176,8 @@ Shows the list of all commands
 )])
 async def echo(ctx, message):
     """
-Send back the message with the correct format
-"""
+    Send back the message with the correct format
+    """
     formated = ""
     re_all = [(x.start(), x.end()) for x in re.finditer(":[a-zA-Z0-9_]{2,32}:", message)]
     re_formated = [(x.start(), x.end()) for x in re.finditer("<:[a-zA-Z0-9_]{2,32}:[0-9]*>", message)]
@@ -190,8 +213,8 @@ Send back the message with the correct format
 @commands.register()
 async def emojis(ctx):
     """
-Shows all emojis.\nWarning: Will spam. Use in appropriate channel
-"""
+    Shows all emojis.\nWarning: Will spam. Use in appropriate channel
+    """
     if len(emojis) == 0:
         await ctx.send("Error: No emojis found.")
         return
@@ -210,8 +233,8 @@ Shows all emojis.\nWarning: Will spam. Use in appropriate channel
 @commands.register()
 async def github(ctx):
     """
-Link to the Github of this bot
-"""
+    Link to the Github of this bot
+    """
     embed = discord.Embed(
         title="cmoafr/redstone-emojis",
         url="https://github.com/cmoafr/redstone-emojis",
@@ -228,20 +251,39 @@ Link to the Github of this bot
 
 
 
+@commands.register(options=[Option(
+    name="server",
+    description="Server you want the link of (Optional)",
+    type_=SlashCommandOptionType.STRING,
+    required=False,
+    choices=[name.lower() for name in settings["discord links"]]
+)])
+async def servers(ctx, server=None):
+    """
+    Links to other helpful Discord servers
+    """
+    links = settings["discord links"]
+    links = {k.lower():v for k,v in links.items()}
+    if server:
+        if server in links:
+            await ctx.send(links[server])
+        else:
+            await ctx.send("Unkown server.")
+    else:
+        embed = discord.Embed(color=0xff0000)
+        for server in links:
+            embed.add_field(
+                name=server,
+                value=links[server],
+                inline=False
+            )
+        await ctx.send(embed=embed)
+
+
+
 
 
 # Run
-
-try:
-    with open("settings.json") as f:
-        settings = json.load(f)
-except FileNotFoundError:
-    with open("settings.json", "w") as f:
-        f.write("""{
-    \"token\": \"INSERT YOUR TOKEN HERE\"
-    \"emojis guilds ids\": []
-}""")
-    raise FileNotFoundError("Settings file not found. Please put your Discord bot token in the newly created file.")
 
 if settings["token"] == "":
     raise RuntimeError("No token found. Please create a bot at https://discord.com/developers/applications and paste the token in the settings file.")
