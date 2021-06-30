@@ -1,25 +1,104 @@
 import discord
 import json
 import re
-from discord.ext import commands
-from discord_slash import SlashCommand, SlashContext
+from discord.ext.commands import Bot
+from discord_slash import SlashCommand, SlashContext, SlashCommandOptionType
 from discord_slash.utils import manage_commands
 
 
 
-no_prefix = lambda bot, message: '<' if message.content.startswith('>') else '>'
-bot = commands.Bot(command_prefix=no_prefix)
-slash = SlashCommand(bot, sync_commands=True)
 
-emoji_full_pattern = re.compile("<:[a-zA-Z0-9]{2,32}:[0-9]*>")
-emoji_pattern = re.compile(":[a-zA-Z0-9]{2,32}:")
+
+class Option:
+
+    def __init__(self, name, description, type_, required, choices=[], usage=None):
+        self.option = manage_commands.create_option(name, description, type_, required, choices)
+        self.name = name
+        self.description = description
+        self.type = self.option["type"]
+        self.required = required
+        self.choices = self.option["choices"]
+        if usage:
+            self.usage = usage
+        else:
+            usage = self.name
+            if self.choices:
+                usage = "|".join()
+            # TODO: Handle subcommands and groups
+            if self.required:
+                self.usage = "<" + usage + ">"
+            else:
+                self.usage = "[" + usage + "]"
+
+
+
+class Command:
+
+    def __init__(self, func, name=None, description=None, usage=None, hidden=False, options=[], **kwargs):
+        self.func = func
+        self.name = (name or func.__name__).lower()
+        description = func.__doc__ or "\n" + (description or "")
+        self.hidden = hidden
+        self.options = options
+        self.kwargs = kwargs
+        
+        if description[0] == '\n':
+            self.description = description.strip() or " "
+            self.usage = usage or self.get_default_usage()
+        else:
+            split = description.split('\n')
+            self.description = '\n'.join(split[1:]).strip() or " "
+            self.usage = usage or split[0]
+
+    def register(self, slash):
+        self.cmdobj = slash.add_slash_command(self.func, self.name, self.description, **self.kwargs)
+        return self.cmdobj
+
+    def help(self):
+        return self.usage
+
+    def get_default_usage(self):
+        usage = "/" + self.name + " "
+        for option in self.options:
+            usage += option.usage + " "
+        return usage.strip()
+
+
+
+class Commands:
+    
+    def __init__(self, slash):
+        self.slash = slash
+        self.list = []
+
+    def register(self, **kwargs):
+        def wrapper(func):
+            nonlocal kwargs
+            cmd = Command(func, **kwargs)
+            self.list.append(cmd)
+            obj = cmd.register(slash)
+            return obj
+        return wrapper
+
+
+
+
+
+no_prefix = lambda bot, message: '<' if message.content.startswith('>') else '>'
+bot = Bot(command_prefix=no_prefix)
+slash = SlashCommand(bot, sync_commands=True)
+commands = Commands(slash)
+
+emoji_full_pattern = re.compile("<:[a-zA-Z0-9_]{2,32}:[0-9]*>")
+emoji_pattern = re.compile(":[a-zA-Z0-9_]{2,32}:")
+
 
 
 
 
 @bot.event
 async def on_ready():
-    command_list = await manage_commands.get_all_commands(bot.user.id, settings["token"])
+    commands_list = await manage_commands.get_all_commands(bot.user.id, settings["token"])
     del settings["token"]
 
     emojis = []
@@ -36,7 +115,7 @@ async def on_ready():
         )
     )
     
-    print("Connected on {} guilds with {} commands.".format(len(bot.guilds), len(command_list)))
+    print("Connected on {} guilds with {} ({}) commands.".format(len(bot.guilds), len(commands.list), len(commands_list)))
 
 
 
@@ -44,28 +123,38 @@ async def on_ready():
 
 # Commands
 
-@slash.slash(name="help", description="Shows the list of all commands.")
+@commands.register()
 async def help(ctx):
-    ordered = sorted(command_list, key=lambda cmd: cmd["name"])
+    """
+Shows the list of all commands
+"""
+    ordered = sorted(commands.list, key=lambda cmd: cmd.name)
     embed = discord.Embed(
         title="Commands:",
         color=0xff0000
     )
+    print("test")
     for cmd in ordered:
-        embed.add_field(
-            name="/" + cmd["name"],
-            value=cmd["description"],
-            inline=False
-        )
+        if not (cmd.hidden and not ctx.author.top_role.permissions.administrator):
+            embed.add_field(
+                name=cmd.usage,
+                value=cmd.description,
+                inline=False
+            )
     await ctx.send(embed=embed)
 
 
 
-@slash.slash(name="echo", description="Send back the message with the correct format.", options=[
-    manage_commands.create_option(name="message", description="Message to be formated and echoed back", option_type=3, required=True)
-])
+@commands.register(options=[Option(
+    name="message",
+    description="Message to be formated and echoed back",
+    type_=SlashCommandOptionType.STRING,
+    required=True
+)])
 async def echo(ctx, message):
-    
+    """
+Send back the message with the correct format
+"""
     formated = ""
     re_all = [(x.start(), x.end()) for x in re.finditer(":[a-zA-Z0-9_]{2,32}:", message)]
     re_formated = [(x.start(), x.end()) for x in re.finditer("<:[a-zA-Z0-9_]{2,32}:[0-9]*>", message)]
@@ -98,8 +187,11 @@ async def echo(ctx, message):
 
 
 
-@slash.slash(name="emojis", description="Shows all emojis.\nWarning: Will spam. Use in appropriate channel.")
+@commands.register()
 async def emojis(ctx):
+    """
+Shows all emojis.\nWarning: Will spam. Use in appropriate channel
+"""
     if len(emojis) == 0:
         await ctx.send("Error: No emojis found.")
         return
@@ -115,8 +207,11 @@ async def emojis(ctx):
 
 
 
-@slash.slash(name="github", description="Link to the Github of this bot")
+@commands.register()
 async def github(ctx):
+    """
+Link to the Github of this bot
+"""
     embed = discord.Embed(
         title="cmoafr/redstone-emojis",
         url="https://github.com/cmoafr/redstone-emojis",
