@@ -91,6 +91,70 @@ class Commands:
 
 
 
+def format_msg(message):
+    if len(message) == 0:
+        return EMPTY
+
+    # Convert layers
+    if type(message) in (list, tuple):
+        if type(message[0]) == str:
+            message = [message]
+        if len(message) == 1:
+            string = "\n".join(message[0])
+        else:
+            layers = []
+            for i, list_ in enumerate(message):
+                layer = "**Layer " + str(i+1) + ":**\n"
+                layer += "\n".join(list_)
+                layers.append(layer)
+            string = "\n\n".join(layers)
+    else:
+        string = message
+    
+    formated = ""
+    re_all = [(x.start(), x.end()) for x in re.finditer(":[a-zA-Z0-9_]{2,32}:", string)]
+    re_formated = [(x.start(), x.end()) for x in re.finditer("<:[a-zA-Z0-9_]{2,32}:[0-9]*>", string)]
+    index = 0
+
+    # Replace emojis
+    for start, end in re_all:
+        for start_, end_ in re_formated:
+            if start >= start_ and end <= end_: # Is formated
+                sub = string[start_+2:end_-1]
+                name, id_ = sub.split(":")
+                if name in emojis_dict and emojis_dict[name].id == int(id_): # Is known
+                    formated += string[index:end_]
+                else: # Is unkown
+                    formated += string[index:start_] + ":" + name + ":"
+                index = end_
+                break
+        else: # Is not formated
+            name = string[start+1:end-1]
+            if name in emojis_dict: # Is known
+                formated += string[index:start] + "<:" + name + ":" + str(emojis_dict[name].id) + ">"
+            else: # Is unkown
+                formated += string[index:end]
+            index = end
+    if index < len(string):
+        formated += string[index:]
+    
+    formated = formated.replace("\\n", "\n").strip()
+    split = []
+    indexes = [0]
+    for i in range(len(formated)):
+        if formated[i:i+2] == "\n\n":
+            if i - indexes[-1] >= 2000:
+                return ["Message is too long and could not be sent."]
+            if i - indexes[0] >= 2000:
+                a, b = indexes[0], indexes[-1]
+                split.append(formated[a:b].strip())
+                indexes = [indexes[-1]]
+            indexes.append(i)
+    split.append(formated[indexes[0]:].strip())
+    return split
+
+
+
 
 
 bot = Bot(command_prefix=no_prefix)
@@ -117,10 +181,19 @@ except FileNotFoundError:
 
 
 
+try:
+    with open("presets.json") as f:
+        presets = json.load(f)
+except FileNotFoundError:
+    presets = {"and":[[":hd::g1::j1::g0::g0::g0::g0:",":g0::g0::fk::eb::g1::j6::hx:",":hd::g1::j1::g0::g0::g0::g0:"]]}
+
+
+
 
 
 @bot.event
 async def on_ready():
+    global emojis, emojis_dict
     commands_list = await manage_commands.get_all_commands(bot.user.id, settings["token"])
     del settings["token"]
 
@@ -178,35 +251,9 @@ async def echo(ctx, message):
     """
     Send back the message with the correct format
     """
-    formated = ""
-    re_all = [(x.start(), x.end()) for x in re.finditer(":[a-zA-Z0-9_]{2,32}:", message)]
-    re_formated = [(x.start(), x.end()) for x in re.finditer("<:[a-zA-Z0-9_]{2,32}:[0-9]*>", message)]
-    index = 0
-
-    # Replace emojis
-    for start, end in re_all:
-        for start_, end_ in re_formated:
-            if start >= start_ and end <= end_: # Is formated
-                sub = message[start_+2:end_-1]
-                name, id_ = sub.split(":")
-                if name in emojis_dict and emojis_dict[name].id == int(id_): # Is known
-                    formated += message[index:end_]
-                else: # Is unkown
-                    formated += message[index:start_] + ":" + name + ":"
-                index = end_
-                break
-        else: # Is not formated
-            name = message[start+1:end-1]
-            if name in emojis_dict: # Is known
-                formated += message[index:start] + "<:" + name + ":" + str(emojis_dict[name].id) + ">"
-            else: # Is unkown
-                formated += message[index:end]
-            index = end
-    if index < len(message):
-        formated += message[index:]
-    
-    formated = formated.replace("\\n", "\n")
-    await ctx.send(formated)
+    split = format_msg(message)
+    for msg in split:
+        await ctx.send(msg)
 
 
 
@@ -252,6 +299,29 @@ async def github(ctx):
 
 
 @commands.register(options=[Option(
+    name="preset",
+    description="Name of the preset you want",
+    type_=SlashCommandOptionType.STRING,
+    required=True,
+    choices=[name for name in presets]
+)])
+async def preset(ctx, name=None):
+    """
+    A few preselected systems ready to go!
+    """
+    if name:
+        if name in presets:
+            split = format_msg(presets[name])
+            for msg in split:
+                await ctx.send(msg)
+        else:
+            await ctx.send("Unkown preset. Correct values:\n" + ", ".join(presets.keys()))
+    else:
+        pass # TBD
+
+
+
+@commands.register(options=[Option(
     name="server",
     description="Server you want the link of (Optional)",
     type_=SlashCommandOptionType.STRING,
@@ -268,7 +338,7 @@ async def servers(ctx, server=None):
         if server in links:
             await ctx.send(links[server])
         else:
-            await ctx.send("Unkown server.")
+            await ctx.send("Unkown server. Correct values:\n" + ", ".join(servers.keys()))
     else:
         embed = discord.Embed(color=0xff0000)
         for server in links:
