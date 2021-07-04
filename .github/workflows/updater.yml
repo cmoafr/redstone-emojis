@@ -1,0 +1,19 @@
+name: updater
+on:
+  push:
+    branches:
+      - master
+jobs:
+  update:
+    runs-on: ubuntu-late
+    steps:
+      - uses: actions/checkout@master
+      - uses: garygrossgarten/github-action-ssh@v0.6.3
+        env:
+          SSH_PASSPHRASE: ${{secrets.SSH_PASSPHRASE}}$
+          SSH_PRIVATE_KEY: ${{secrets.SSH_PRIVATE_KEY}}$
+        with:
+          command: cd /root/redstone-emojis && bash update.sh
+          host: topred.fr # Amazing redstone server. Come check us out :)
+          privateKey: SSH_PRIVATE_KEY
+          passphrase: SSH_PASSPHRASE
