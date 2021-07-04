@@ -1,2 +1,3 @@
 # Ignore settings file with private values
 settings.json
+presets.json
