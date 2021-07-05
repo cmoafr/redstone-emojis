@@ -1,9 +1,13 @@
 import discord
 import json
 import re
+import requests
 from discord.ext.commands import Bot
 from discord_slash import SlashCommand, SlashContext, SlashCommandOptionType
 from discord_slash.utils import manage_commands
+from PIL import Image
+from functools import lru_cache
+from io import BytesIO
 
 
 
@@ -13,6 +17,8 @@ no_prefix = lambda bot, message: '<' if message.content.startswith('>') else '>'
 
 emoji_full_pattern = re.compile("<:[a-zA-Z0-9_]{2,32}:[0-9]*>")
 emoji_pattern = re.compile(":[a-zA-Z0-9_]{2,32}:")
+
+export_scale = 4
 
 
 
@@ -112,8 +118,8 @@ def format_msg(message):
         string = message
     
     formated = ""
-    re_all = [(x.start(), x.end()) for x in re.finditer(":[a-zA-Z0-9_]{2,32}:", string)]
-    re_formated = [(x.start(), x.end()) for x in re.finditer("<:[a-zA-Z0-9_]{2,32}:[0-9]*>", string)]
+    re_all = [(x.start(), x.end()) for x in re.finditer(emoji_pattern, string)]
+    re_formated = [(x.start(), x.end()) for x in re.finditer(emoji_full_pattern, string)]
     index = 0
 
     # Replace emojis
@@ -131,7 +137,7 @@ def format_msg(message):
         else: # Is not formated
             name = string[start+1:end-1]
             if name in emojis_dict: # Is known
-                formated += string[index:start] + "<:" + name + ":" + str(emojis_dict[name].id) + ">"
+                formated += string[index:start] + str(emojis_dict[name])
             else: # Is unkown
                 formated += string[index:end]
             index = end
@@ -274,6 +280,70 @@ async def emojis(ctx):
             message = ""
         message += "<:{}:{}>".format(emoji.name, emoji.id)
     await ctx.send(message)
+
+
+
+@commands.register(options=[Option(
+    name="circuit",
+    description="Circuit to export. Multiple layers and text are not supported yet.",
+    type_=SlashCommandOptionType.STRING,
+    required=True
+), Option(
+    name="transparent",
+    description="Makes the background transparent (Default: False)",
+    type_=SlashCommandOptionType.BOOLEAN,
+    required=False
+)])
+async def export(ctx, message, transparent=False):
+    """
+    Exports a circuit to a PNG file.
+    """
+    await ctx.defer()
+    message = format_msg(message)[0]
+
+    @lru_cache
+    def get_image(emoji):
+        r = requests.get(str(emoji.url), stream=True)
+        return Image.open(r.raw).resize((16, 16), resample=0).convert("RGBA")
+
+    global grid
+    grid = []
+    line = []
+    while message:
+        search = re.search(emoji_full_pattern, message)
+        if search == None:
+            break
+        s, e = search.span()
+        if s != 0:
+            text = message[:s]
+            if "\n" in text:
+                grid.append(line)
+                line = []
+        e_name = message[s+2:message.find(":",s+2)]
+        if e_name in emojis_dict:
+            emoji = emojis_dict[e_name]
+            if str(emoji) == message[s:e]:
+                line.append(emoji)
+        message = message[e:]
+    if line:
+        grid.append(line)
+
+    if sum(len(grid[0]) != len(line) for line in grid):
+        await ctx.send("Your circuit is not rectangular. Please fill in the gaps using "+str(emojis_dict["g0"])+" (:g0:).")
+        return
+
+    w, h = 16*len(grid[0])+32, 16*len(grid)+32
+    img = Image.new("RGBA", (w, h), color=(54, 57, 63, 255*(not transparent)))
+    for i, line in enumerate(grid):
+        for j, emoji in enumerate(line):
+            e = get_image(emoji)
+            img.paste(e, (16*j+16, 16*i+16), e)
+
+    with BytesIO() as img_bin:
+        img.resize((w*export_scale, h*export_scale), resample=0).save(img_bin, "PNG")
+        img_bin.seek(0)
+        file = discord.File(img_bin, "export.png")
+        await ctx.send(file=file)
 
 
 
