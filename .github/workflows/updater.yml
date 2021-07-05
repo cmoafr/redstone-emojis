@@ -15,5 +15,5 @@ jobs:
         with:
           command: cd /root/redstone-emojis && bash update.sh
           host: topred.fr # Amazing redstone server. Come check us out :)
-          privateKey: $SSH_PRIVATE_KEY
-          passphrase: $SSH_PASSPHRASE
+          privateKey: ${{env.SSH_PRIVATE_KEY}}
+          passphrase: ${{env.SSH_PASSPHRASE}}
