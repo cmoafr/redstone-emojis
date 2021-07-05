@@ -3,8 +3,8 @@ import json
 import re
 import requests
 from discord.ext.commands import Bot
-from discord_slash import SlashCommand, SlashContext, SlashCommandOptionType
-from discord_slash.utils import manage_commands
+from discord_slash import SlashCommand, SlashContext, SlashCommandOptionType, ButtonStyle
+from discord_slash.utils import manage_commands, manage_components
 from PIL import Image
 from functools import lru_cache
 from io import BytesIO
@@ -12,6 +12,7 @@ from io import BytesIO
 
 
 EMPTY = "\u200b"
+EMBED_COLOR = 0xFF0000
 
 no_prefix = lambda bot, message: '<' if message.content.startswith('>') else '>'
 
@@ -19,6 +20,13 @@ emoji_full_pattern = re.compile("<:[a-zA-Z0-9_]{2,32}:[0-9]*>")
 emoji_pattern = re.compile(":[a-zA-Z0-9_]{2,32}:")
 
 export_scale = 4
+
+
+
+
+
+bot = Bot(command_prefix=no_prefix)
+slash = SlashCommand(bot, sync_commands=True)
 
 
 
@@ -97,7 +105,101 @@ class Commands:
 
 
 
-def format_msg(message):
+class LayersEmbed:
+
+    interactions = []
+
+    def __init__(self, ctx, layers=None, name=None):
+        self.ctx = ctx
+        self.layers = layers or format_msg(self.ctx.message.content, split=False).split("\n\n")
+        for layer in self.layers:
+            if len(layer) >= 4096:
+                self.layers = ["Message is too long and could not be sent."]
+                break
+        self.name = name
+        self.current = 0
+        self.interactions.append(self)
+
+    def get_data(self, layer):
+        if layer < 0 or layer >= len(self.layers):
+            return None, None
+        
+        embed = discord.Embed(
+            title=self.name,
+            description=self.layers[layer],
+            color=EMBED_COLOR
+        )
+        buttons = []
+        components = None
+
+        if len(self.layers) > 1:
+            buttons = [manage_components.create_button(
+                style=ButtonStyle.gray,
+                label="Layer " + str(layer+1) + "/" + str(len(self.layers)),
+                custom_id="__callback_none"
+            )]
+            if layer != 0:
+                buttons.insert(0, manage_components.create_button(
+                    style=ButtonStyle.blue,
+                    label="<-",
+                    custom_id="__callback_prev"
+                ))
+            if layer != len(self.layers)-1:
+                buttons.append(manage_components.create_button(
+                    style=ButtonStyle.blue,
+                    label="->",
+                    custom_id="__callback_next"
+                ))
+            components = [manage_components.create_actionrow(*buttons)]
+
+        return embed, components
+
+    async def send(self, layer=0):
+        self.current = layer
+        embed, components = self.get_data(layer)
+        await self.ctx.send(embed=embed, components=components)
+
+    async def edit(self, button_ctx, layer=0):
+        self.current = layer
+        embed, components = self.get_data(layer)
+        await button_ctx.edit_origin(embed=embed, components=components)
+
+
+
+    def find(id_):
+        for lm in LayersEmbed.interactions:
+            message = lm.ctx.message
+            if message != None:
+                if message.id == id_:
+                    return lm
+        return None
+
+    @slash.component_callback()
+    async def __callback_prev(button_ctx):
+        id_ = button_ctx.origin_message_id
+        origin = LayersEmbed.find(id_)
+        if origin:
+            await origin.edit(button_ctx, origin.current-1)
+
+    @slash.component_callback()
+    async def __callback_next(button_ctx):
+        id_ = button_ctx.origin_message_id
+        origin = LayersEmbed.find(id_)
+        if origin:
+            await origin.edit(button_ctx, origin.current+1)
+
+    @slash.component_callback()
+    async def __callback_none(button_ctx):
+        id_ = button_ctx.origin_message_id
+        origin = LayersEmbed.find(id_)
+        if origin:
+            await origin.edit(button_ctx, origin.current)
+
+
+
+
+
+def format_msg(message, max_length=2000, split=True):
     if len(message) == 0:
         return EMPTY
 
@@ -110,7 +212,7 @@ def format_msg(message):
         else:
             layers = []
             for i, list_ in enumerate(message):
-                layer = "**Layer " + str(i+1) + ":**\n"
+                layer = "" #"**Layer " + str(i+1) + ":**\n"
                 layer += "\n".join(list_)
                 layers.append(layer)
             string = "\n\n".join(layers)
@@ -145,13 +247,17 @@ def format_msg(message):
         formated += string[index:]
     
     formated = formated.replace("\\n", "\n").strip()
+
+    if not split:
+        return formated
+    
     split = []
     indexes = [0]
     for i in range(len(formated)):
         if formated[i:i+2] == "\n\n":
-            if i - indexes[-1] >= 2000:
+            if i - indexes[-1] >= max_length:
                 return ["Message is too long and could not be sent."]
-            if i - indexes[0] >= 2000:
+            if i - indexes[0] >= max_length:
                 a, b = indexes[0], indexes[-1]
                 split.append(formated[a:b].strip())
                 indexes = [indexes[-1]]
@@ -163,10 +269,6 @@ def format_msg(message):
 
 
 
-bot = Bot(command_prefix=no_prefix)
-slash = SlashCommand(bot, sync_commands=True)
-commands = Commands(slash)
-
 default_settings = '''{
     "token": "INSERT YOUR TOKEN HERE"
     "emojis guilds ids": [],
@@ -176,6 +278,8 @@ default_settings = '''{
 }'''
 
 
+
+commands = Commands(slash)
 
 try:
     with open("settings.json") as f:
@@ -230,11 +334,10 @@ async def help(ctx):
     """
     Shows the list of all commands
     """
-    global embed
     ordered = sorted(commands.list, key=lambda cmd: cmd.name)
     embed = discord.Embed(
         title="Commands:",
-        color=0xff0000
+        color=EMBED_COLOR
     )
     for cmd in ordered:
         if not (cmd.hidden and not ctx.author.top_role.permissions.administrator):
@@ -306,7 +409,6 @@ async def export(ctx, message, transparent=False):
         r = requests.get(str(emoji.url), stream=True)
         return Image.open(r.raw).resize((16, 16), resample=0).convert("RGBA")
 
-    global grid
     grid = []
     line = []
     while message:
@@ -356,7 +458,7 @@ async def github(ctx):
         title="cmoafr/redstone-emojis",
         url="https://github.com/cmoafr/redstone-emojis",
         description="Here you go :)",
-        color=0xff0000
+        color=EMBED_COLOR
     )
     embed.set_author(
         name="GitHub",
@@ -381,9 +483,8 @@ async def preset(ctx, name=None):
     """
     if name:
         if name in presets:
-            split = format_msg(presets[name])
-            for msg in split:
-                await ctx.send(msg)
+            layers = format_msg(presets[name], split=False).split("\n\n")
+            await LayersEmbed(ctx, layers, name=name).send()
         else:
             await ctx.send("Unkown preset. Correct values:\n" + ", ".join(presets.keys()))
     else:
@@ -410,7 +511,7 @@ async def servers(ctx, server=None):
         else:
             await ctx.send("Unkown server. Correct values:\n" + ", ".join(servers.keys()))
     else:
-        embed = discord.Embed(color=0xff0000)
+        embed = discord.Embed(color=EMBED_COLOR)
         for server in links:
             embed.add_field(
                 name=server,
