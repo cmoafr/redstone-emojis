@@ -17,5 +17,6 @@ jobs:
           command: cd /root/redstone-emojis && bash update.sh
           host: topred.fr # Amazing redstone server. Come check us out :)
           user: ${{env.SSH_USERNAME}}
+          args: "-tt -vvv"
           key: ${{env.SSH_PRIVATE_KEY}}
           pass: ${{env.SSH_PASSPHRASE}}
