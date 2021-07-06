@@ -9,14 +9,9 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - uses: fifsky/ssh-action@master
-        env:
-          SSH_PASSPHRASE: ${{secrets.SSH_PASSPHRASE}}
-          SSH_PRIVATE_KEY: ${{secrets.SSH_PRIVATE_KEY}}
-          SSH_USERNAME: ${{secrets.SSH_USERNAME}}
         with:
           command: cd /root/redstone-emojis && bash update.sh
           host: topred.fr # Amazing redstone server. Come check us out :)
-          user: ${{env.SSH_USERNAME}}
           args: "-tt -vvv"
-          key: ${{env.SSH_PRIVATE_KEY}}
-          pass: ${{env.SSH_PASSPHRASE}}
+          key: ${{secrets.SSH_PRIVATE_KEY}}
+          pass: ${{secrets.SSH_PASSPHRASE}}
