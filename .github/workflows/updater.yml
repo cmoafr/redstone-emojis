@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-      - uses: garygrossgarten/github-action-ssh@v0.6.3
+      - uses: fifsky/ssh-action@master
         env:
           SSH_PASSPHRASE: ${{secrets.SSH_PASSPHRASE}}
           SSH_PRIVATE_KEY: ${{secrets.SSH_PRIVATE_KEY}}
@@ -16,6 +16,6 @@ jobs:
         with:
           command: cd /root/redstone-emojis && bash update.sh
           host: topred.fr # Amazing redstone server. Come check us out :)
-          username: ${{env.SSH_USERNAME}}
-          privateKey: ${{env.SSH_PRIVATE_KEY}}
-          passphrase: ${{env.SSH_PASSPHRASE}}
+          user: ${{env.SSH_USERNAME}}
+          key: ${{env.SSH_PRIVATE_KEY}}
+          pass: ${{env.SSH_PASSPHRASE}}
