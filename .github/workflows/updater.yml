@@ -19,5 +19,5 @@ jobs:
         with:
           command: cd /root/redstone-emojis && bash update.sh
           host: topred.fr
-          username: topred.fr
+          username: root
           privateKey: ${{ secrets.PRIVATE_KEY}}
