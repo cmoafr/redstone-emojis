@@ -16,4 +16,4 @@ jobs:
       - name: Adding Known Hosts
         run: ssh-keyscan -H topred.fr >> ~/.ssh/known_hosts
       - name: Deploy with rsync
-        run: rsync -avz . root@$topred.fr:/root/redstone-emojis
+        run: rsync -avz . root@topred.fr:/root/redstone-emojis
