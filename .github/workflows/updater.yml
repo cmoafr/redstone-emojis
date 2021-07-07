@@ -8,10 +8,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-      - uses: fifsky/ssh-action@master
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
         with:
-          command: cd /root/redstone-emojis && bash update.sh
-          host: topred.fr # Amazing redstone server. Come check us out :)
-          args: "-tt -vvv"
-          key: ${{secrets.SSH_PRIVATE_KEY}}
-          pass: ${{secrets.SSH_PASSPHRASE}}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: 'just-a-placeholder-so-we-dont-get-errors'
+      - name: Adding Known Hosts
+        run: ssh-keyscan -H topred.fr >> ~/.ssh/known_hosts
+      - name: Deploy with rsync
+        run: rsync -avz . root@$topred.fr:/root/redstone-emojis
