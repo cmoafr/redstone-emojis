@@ -15,5 +15,9 @@ jobs:
           known_hosts: 'just-a-placeholder-so-we-dont-get-errors'
       - name: Adding Known Hosts
         run: ssh-keyscan -H topred.fr >> ~/.ssh/known_hosts
-      - name: Deploy with rsync
-        run: rsync -avz . root@topred.fr:/root/redstone-emojis
+      - uses: garygrossgarten/github-action-ssh@release
+        with:
+          command: cd /root/redstone-emojis && bash update.sh
+          host: topred.fr
+          username: topred.fr
+          privateKey: ${{ secrets.PRIVATE_KEY}}
