@@ -12,7 +12,7 @@ jobs:
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          known_hosts: 'just-a-placeholder-so-we-dont-get-errors'
+          known_hosts: 'topred.fr'
       - name: Adding Known Hosts
         run: ssh-keyscan -H topred.fr >> ~/.ssh/known_hosts
       - uses: garygrossgarten/github-action-ssh@release
