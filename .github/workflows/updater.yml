@@ -7,17 +7,8 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
       - name: Install SSH Key
-        uses: shimataro/ssh-key-action@v2
-        with:
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          known_hosts: 'topred.fr'
-      - name: Adding Known Hosts
-        run: ssh-keyscan -H topred.fr >> ~/.ssh/known_hosts
-      - uses: garygrossgarten/github-action-ssh@release
-        with:
-          command: cd /root/redstone-emojis && bash update.sh
-          host: topred.fr
-          username: root
-          privateKey: ${{ secrets.PRIVATE_KEY}}
+        run: echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+
+      - name: Run update script
+        run: ssh -o StrictHostKeyChecking=no root@topred.fr /root/redstone-emojis/update.sh
