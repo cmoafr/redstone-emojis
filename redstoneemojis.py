@@ -16,7 +16,7 @@ EMBED_COLOR = 0xFF0000
 
 no_prefix = lambda bot, message: '<' if message.content.startswith('>') else '>'
 
-emoji_full_pattern = re.compile("<:[a-zA-Z0-9_]{2,32}:[0-9]*>")
+emoji_full_pattern = re.compile("<a?:[a-zA-Z0-9_]{2,32}:[0-9]+>")
 emoji_pattern = re.compile(":[a-zA-Z0-9_]{2,32}:")
 
 export_scale = 4
@@ -200,70 +200,73 @@ class LayersEmbed:
 
 
 def format_msg(message, max_length=2000, split=True):
-    if len(message) == 0:
-        return EMPTY
 
-    # Convert layers
-    if type(message) in (list, tuple):
-        if type(message[0]) == str:
-            message = [message]
-        if len(message) == 1:
-            string = "\n".join(message[0])
-        else:
-            layers = []
-            for i, list_ in enumerate(message):
-                layer = "" #"**Layer " + str(i+1) + ":**\n"
-                layer += "\n".join(list_)
-                layers.append(layer)
-            string = "\n\n".join(layers)
-    else:
-        string = message
-    
-    formated = ""
-    re_all = [(x.start(), x.end()) for x in re.finditer(emoji_pattern, string)]
-    re_formated = [(x.start(), x.end()) for x in re.finditer(emoji_full_pattern, string)]
-    index = 0
+    if type(message) == list:
+        for i, x in enumerate(message):
+            if type(x) == list:
+                message[i] = "\n".join(x)
+        message = "\n\n".join(message)
 
-    # Replace emojis
-    for start, end in re_all:
-        for start_, end_ in re_formated:
-            if start >= start_ and end <= end_: # Is formated
-                sub = string[start_+2:end_-1]
-                name, id_ = sub.split(":")
-                if name in emojis_dict and emojis_dict[name].id == int(id_): # Is known
-                    formated += string[index:end_]
-                else: # Is unkown
-                    formated += string[index:start_] + ":" + name + ":"
-                index = end_
-                break
-        else: # Is not formated
-            name = string[start+1:end-1]
-            if name in emojis_dict: # Is known
-                formated += string[index:start] + str(emojis_dict[name])
-            else: # Is unkown
-                formated += string[index:end]
-            index = end
-    if index < len(string):
-        formated += string[index:]
-    
-    formated = formated.replace("\\n", "\n").strip()
+    message = message.replace("\\n", "\n")
+    splited = []
+    start = 0
+    i = 0
+    while i < len(message):
+        c = message[i]
+
+        # TODO: Change for 3.10 switch statements
+        if c == "\\":
+            i += 2
+            continue
+
+        if c == "\n":
+            if message[i+1] == "\n":
+                splited.append(message[start:i])
+                start = i = i + 2
+                continue
+
+        if c == "`":
+            n = 1
+            if message[i:i+3] == "```":
+                n = 3
+                i += 2
+            j = i + 1
+            while j < len(message):
+                if message[j:j+n] == "`"*n:
+                    i = j + n-1
+                    break
+                if n == 1 and message[j-1] == "\n":
+                    message = message[:j-1] + "\\n" + message[j:]
+                j += 1
+
+        if c == "<":
+            search = emoji_full_pattern.search(message, i)
+            if search and search.start() == i:
+                i = search.end()
+                continue
+
+        if c == ":":
+            search = emoji_pattern.search(message, i)
+            if search and search.start() == i:
+                e = search.end()
+                name = message[i+1:e-1]
+                emoji = emojis_dict[name]
+                full = str(emoji)
+                message = message[:i] + full + message[e:]
+                i += len(full)
+                continue
+            
+        i += 1
+    splited.append(message[start:].strip())
 
     if not split:
-        return formated
+        return "\n\n".join(splited)
+
+    splited = [x.strip() for x in splited]
+    if max(len(x) for x in splited) > max_length:
+        return ["Message is too long and could not be send."]
     
-    split = []
-    indexes = [0]
-    for i in range(len(formated)):
-        if formated[i:i+2] == "\n\n":
-            if i - indexes[-1] >= max_length:
-                return ["Message is too long and could not be sent."]
-            if i - indexes[0] >= max_length:
-                a, b = indexes[0], indexes[-1]
-                split.append(formated[a:b].strip())
-                indexes = [indexes[-1]]
-            indexes.append(i)
-    split.append(formated[indexes[0]:].strip())
-    return split
+    return splited # TODO: Join messages if possible
 
 
 
