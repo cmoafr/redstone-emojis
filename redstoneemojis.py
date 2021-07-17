@@ -19,7 +19,7 @@ no_prefix = lambda bot, message: '<' if message.content.startswith('>') else '>'
 emoji_full_pattern = re.compile("<a?:[a-zA-Z0-9_]{2,32}:[0-9]+>")
 emoji_pattern = re.compile(":[a-zA-Z0-9_]{2,32}:")
 
-export_scale = 4
+export_size = 64
 
 
 
@@ -250,8 +250,11 @@ def format_msg(message, max_length=2000, split=True):
             if search and search.start() == i:
                 e = search.end()
                 name = message[i+1:e-1]
-                emoji = emojis_dict[name]
-                full = str(emoji)
+                if name in emojis_dict:
+                    emoji = emojis_dict[name]
+                    full = str(emoji)
+                else:
+                    full = ":"+name+":"
                 message = message[:i] + full + message[e:]
                 i += len(full)
                 continue
@@ -394,13 +397,8 @@ async def emojis(ctx):
     description="Circuit to export. Multiple layers and text are not supported yet.",
     type_=SlashCommandOptionType.STRING,
     required=True
-), Option(
-    name="transparent",
-    description="Makes the background transparent (Default: False)",
-    type_=SlashCommandOptionType.BOOLEAN,
-    required=False
 )])
-async def export(ctx, message, transparent=False):
+async def export(ctx, message):
     """
     Exports a circuit to a PNG file.
     """
@@ -410,7 +408,7 @@ async def export(ctx, message, transparent=False):
     @lru_cache
     def get_image(emoji):
         r = requests.get(str(emoji.url), stream=True)
-        return Image.open(r.raw).resize((16, 16), resample=0).convert("RGBA")
+        return Image.open(r.raw).resize((export_size, export_size), resample=0).convert("RGBA")
 
     grid = []
     line = []
@@ -437,15 +435,15 @@ async def export(ctx, message, transparent=False):
         await ctx.send("Your circuit is not rectangular. Please fill in the gaps using "+str(emojis_dict["g0"])+" (:g0:).")
         return
 
-    w, h = 16*len(grid[0])+32, 16*len(grid)+32
-    img = Image.new("RGBA", (w, h), color=(54, 57, 63, 255*(not transparent)))
+    w, h = export_size*len(grid[0]), export_size*len(grid)
+    img = Image.new("RGBA", (w, h), color=(54, 57, 63, 0))
     for i, line in enumerate(grid):
         for j, emoji in enumerate(line):
             e = get_image(emoji)
-            img.paste(e, (16*j+16, 16*i+16), e)
+            img.paste(e, (export_size*j, export_size*i), e)
 
     with BytesIO() as img_bin:
-        img.resize((w*export_scale, h*export_scale), resample=0).save(img_bin, "PNG")
+        img.save(img_bin, "PNG")
         img_bin.seek(0)
         file = discord.File(img_bin, "export.png")
         await ctx.send(file=file)
