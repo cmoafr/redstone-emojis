@@ -19,6 +19,7 @@ no_prefix = lambda bot, message: '<' if message.content.startswith('>') else '>'
 emoji_full_pattern = re.compile("<a?:[a-zA-Z0-9_]{2,32}:[0-9]+>")
 emoji_pattern = re.compile(":[a-zA-Z0-9_]{2,32}:")
 
+AIR = "g0"
 export_size = 64
 
 
@@ -398,12 +399,12 @@ async def emojis(ctx):
     type_=SlashCommandOptionType.STRING,
     required=True
 )])
-async def export(ctx, message):
+async def export(ctx, circuit):
     """
     Exports a circuit to a PNG file.
     """
     await ctx.defer()
-    message = format_msg(message)[0]
+    message = format_msg(circuit)[0]
 
     @lru_cache
     def get_image(emoji):
@@ -431,9 +432,13 @@ async def export(ctx, message):
     if line:
         grid.append(line)
 
-    if sum(len(grid[0]) != len(line) for line in grid):
-        await ctx.send("Your circuit is not rectangular. Please fill in the gaps using "+str(emojis_dict["g0"])+" (:g0:).")
+    m = max(len(line) for line in grid) if len(grid) else 0
+    if len(grid) == 0 or m == 0:
+        await ctx.send("No circuit found. I'm not just gonna export plain text you know...")
         return
+    for i in range(len(grid)):
+        while len(grid[i]) < m:
+            grid[i].append(emojis_dict[AIR])
 
     w, h = export_size*len(grid[0]), export_size*len(grid)
     img = Image.new("RGBA", (w, h), color=(54, 57, 63, 0))
