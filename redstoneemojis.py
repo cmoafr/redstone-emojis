@@ -208,7 +208,7 @@ def format_msg(message, max_length=2000, split=True):
                 message[i] = "\n".join(x)
         message = "\n\n".join(message)
 
-    message = message.replace("\\n", "\n")
+    message = message.replace("\\n", "\n").strip()
     splited = []
     start = 0
     i = 0
@@ -403,8 +403,29 @@ async def export(ctx, circuit):
     """
     Exports a circuit to a PNG file.
     """
+    global messages
     await ctx.defer()
-    message = format_msg(circuit)[0]
+    if circuit == "_":
+        for msg in (await ctx.channel.history(limit=50).flatten())[1:]:
+            if msg.author.id == bot.user.id and msg.content:
+                message = msg.content
+                break
+    elif circuit.startswith("https://discord.com/channels/"):
+        message = None
+        guildId, chanId, msgId = circuit.split("/")[4:7]
+        try:
+            chan = await bot.fetch_channel(chanId)
+            message = (await ctx.channel.fetch_message(msgId)).content
+        except Exception as e:
+            await ctx.send("Could not access this message. Either I am not on this server or I do not have access to this channel.")
+            return
+    else:
+        try:
+            msgId = int(circuit)
+            message = (await ctx.channel.fetch_message(msgId)).content
+            print(message)
+        except Exception as e:
+            message = format_msg(circuit)[0]
 
     @lru_cache
     def get_image(emoji):
