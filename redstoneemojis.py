@@ -20,6 +20,8 @@ emoji_full_pattern = re.compile("<a?:[a-zA-Z0-9_]{2,32}:[0-9]+>")
 emoji_pattern = re.compile(":[a-zA-Z0-9_]{2,32}:")
 
 AIR = "g0"
+MARKER_HORIZ = "fb"
+MARKER_VERTI = "fc"
 export_size = 64
 
 
@@ -137,19 +139,19 @@ class LayersEmbed:
             buttons = [manage_components.create_button(
                 style=ButtonStyle.gray,
                 label="Layer " + str(layer+1) + "/" + str(len(self.layers)),
-                custom_id="__callback_none"
+                custom_id="__layersCB_none"
             )]
             if layer != 0:
                 buttons.insert(0, manage_components.create_button(
                     style=ButtonStyle.blue,
                     label="<-",
-                    custom_id="__callback_prev"
+                    custom_id="__layersCB_prev"
                 ))
             if layer != len(self.layers)-1:
                 buttons.append(manage_components.create_button(
                     style=ButtonStyle.blue,
                     label="->",
-                    custom_id="__callback_next"
+                    custom_id="__layersCB_next"
                 ))
             components = [manage_components.create_actionrow(*buttons)]
 
@@ -176,25 +178,169 @@ class LayersEmbed:
         return None
 
     @slash.component_callback()
-    async def __callback_prev(button_ctx):
+    async def __layersCB_prev(button_ctx):
         id_ = button_ctx.origin_message_id
         origin = LayersEmbed.find(id_)
         if origin:
             await origin.edit(button_ctx, origin.current-1)
 
     @slash.component_callback()
-    async def __callback_next(button_ctx):
+    async def __layersCB_next(button_ctx):
         id_ = button_ctx.origin_message_id
         origin = LayersEmbed.find(id_)
         if origin:
             await origin.edit(button_ctx, origin.current+1)
 
     @slash.component_callback()
-    async def __callback_none(button_ctx):
+    async def __layersCB_none(button_ctx):
         id_ = button_ctx.origin_message_id
         origin = LayersEmbed.find(id_)
         if origin:
             await origin.edit(button_ctx, origin.current)
+
+
+
+class Editor:
+
+    list = []
+
+    def __init__(self, ctx, width, height):
+        self.ctx = ctx
+        self.width = width
+        self.height = height
+        self.reset_message()
+        self.list.append(self)
+
+    def reset_message(self):
+        self.x = 0
+        self.y = 0
+        self.selected = AIR
+        self.grid = [[AIR for j in range(self.width)] for i in range(self.height)]
+        self.buttons = [
+            [(1, "<<", "__editorCB_prev"),      (2, self.selected, "__editorCB_none"),  (1, ">>", "__editorCB_next")        ],
+            [(2, "", "__editorCB_none"),        (1, "˄", "__editorCB_up"),              (2, "", "__editorCB_none")          ],
+            [(1, "˂", "__editorCB_left"),       (1, "Place", "__editorCB_place"),       (1, "˃", "__editorCB_right")        ],
+            [(3, "Echo", "__editorCB_echo"),    (1, "˅", "__editorCB_down"),            (3, "Export", "__editorCB_export")  ]
+        ]
+
+    def get_data(self):
+        border_horiz = [AIR] + [MARKER_VERTI if j == self.x else AIR for j in range(self.width)] + [AIR]
+        grid = [border_horiz]
+        for i in range(self.height):
+            border_vert = MARKER_HORIZ if i == self.y else AIR
+            line = [border_vert]
+            for j in range(self.width):
+                line.append(self.grid[i][j])
+            line += [border_vert]
+            grid.append(line)
+        grid += [border_horiz]
+
+        message = "\n".join("".join(str(emojis_dict[name]) for name in line) for line in grid)
+
+        self.buttons[0][1] = (2, self.selected, "__editorCB_none")
+
+        buttons = []
+        for raw_line in self.buttons:
+            line = []
+            for raw in raw_line:
+                kwargs = {"style": raw[0], "custom_id": raw[2]}
+                name = raw[1] or EMPTY
+                if name in emojis_dict:
+                    kwargs["emoji"] = emojis_dict[name]
+                else:
+                    kwargs["label"] = name
+                line.append(manage_components.create_button(**kwargs))
+            buttons.append(line)
+        components = [manage_components.create_actionrow(*row) for row in buttons]
+
+        return message, components
+
+    async def update(self, btn_ctx):
+        message, components = self.get_data()
+        await btn_ctx.edit_origin(content=message, components=components)
+
+    async def send(self):
+        message, components = self.get_data()
+        await self.ctx.send(message, components=components)
+
+    def find(btn_ctx):
+        id_ = btn_ctx.origin_message_id
+        for editor in Editor.list:
+            message = editor.ctx.message
+            if message != None and message.id == id_:
+                return editor
+        raise LookupError("Editor interaction with id "+str(id_)+" not found")
+
+    @slash.component_callback()
+    async def __editorCB_none(btn_ctx):
+        self = Editor.find(btn_ctx)
+        await self.update(btn_ctx)
+
+    @slash.component_callback()
+    async def __editorCB_prev(btn_ctx):
+        self = Editor.find(btn_ctx)
+        names = tuple(emojis_dict.keys())
+        i = names.index(self.selected)
+        i = (i-1)%len(names)
+        self.selected = names[i]
+        await self.update(btn_ctx)
+
+    @slash.component_callback()
+    async def __editorCB_next(btn_ctx):
+        self = Editor.find(btn_ctx)
+        names = tuple(emojis_dict.keys())
+        i = names.index(self.selected)
+        i = (i+1)%len(names)
+        self.selected = names[i]
+        await self.update(btn_ctx)
+
+    @slash.component_callback()
+    async def __editorCB_up(btn_ctx):
+        self = Editor.find(btn_ctx)
+        if self.y > 0:
+            self.y -= 1
+        await self.update(btn_ctx)
+
+    @slash.component_callback()
+    async def __editorCB_down(btn_ctx):
+        self = Editor.find(btn_ctx)
+        if self.y < self.height-1:
+            self.y += 1
+        await self.update(btn_ctx)
+
+    @slash.component_callback()
+    async def __editorCB_left(btn_ctx):
+        self = Editor.find(btn_ctx)
+        if self.x > 0:
+            self.x -= 1
+        await self.update(btn_ctx)
+
+    @slash.component_callback()
+    async def __editorCB_right(btn_ctx):
+        self = Editor.find(btn_ctx)
+        if self.x < self.width-1:
+            self.x += 1
+        await self.update(btn_ctx)
+
+    @slash.component_callback()
+    async def __editorCB_place(btn_ctx):
+        self = Editor.find(btn_ctx)
+        self.grid[self.y][self.x] = self.selected
+        await self.update(btn_ctx)
+
+    @slash.component_callback()
+    async def __editorCB_echo(btn_ctx):
+        await btn_ctx.edit_origin(content="Your circuit has been echoed back below.", components=None)
+        self = Editor.find(btn_ctx)
+        message = "\n".join(":"+"::".join(line)+":" for line in self.grid)
+        await echo.invoke(self.ctx, message)
+
+    @slash.component_callback()
+    async def __editorCB_export(btn_ctx):
+        await btn_ctx.edit_origin(content="Your circuit has been exported to an image below.", components=None)
+        self = Editor.find(btn_ctx)
+        message = "\n".join(":"+"::".join(line)+":" for line in self.grid)
+        await export.invoke(self.ctx, message)
 
 
 
@@ -373,6 +519,30 @@ async def echo(ctx, message):
 
 
 
+@commands.register(options=[Option(
+    name="width",
+    description="Width of the grid",
+    type_=SlashCommandOptionType.INTEGER,
+    required=True
+), Option(
+    name="height",
+    description="Height of the grid",
+    type_=SlashCommandOptionType.INTEGER,
+    required=True
+)])
+async def editor(ctx, width, height):
+    """
+    Visual editor to create emoji circuits
+    """
+    await ctx.defer()
+    try:
+        await Editor(ctx, int(width), int(height)).send()
+    except Exception as e:
+        #await ctx.send("An error occured. More details about errors will be added later.")
+        raise e
+
+
+
 @commands.register()
 async def emojis(ctx):
     """
@@ -403,29 +573,31 @@ async def export(ctx, circuit):
     """
     Exports a circuit to a PNG file.
     """
-    global messages
-    await ctx.defer()
-    if circuit == "_":
-        for msg in (await ctx.channel.history(limit=50).flatten())[1:]:
-            if msg.author.id == bot.user.id and msg.content:
-                message = msg.content
-                break
-    elif circuit.startswith("https://discord.com/channels/"):
-        message = None
-        guildId, chanId, msgId = circuit.split("/")[4:7]
-        try:
-            chan = await bot.fetch_channel(chanId)
-            message = (await ctx.channel.fetch_message(msgId)).content
-        except Exception as e:
-            await ctx.send("Could not access this message. Either I am not on this server or I do not have access to this channel.")
-            return
-    else:
-        try:
+    try:
+        await ctx.defer()
+    except:
+        pass
+    try:
+        if circuit == "_":
+            for msg in (await ctx.channel.history(limit=50).flatten())[1:]:
+                if msg.author.id == bot.user.id and msg.content:
+                    message = msg.content
+                    break
+        elif circuit.startswith("https://discord.com/channels/"):
+            message = None
+            guildId, chanId, msgId = circuit.split("/")[4:7]
+            try:
+                chan = await bot.fetch_channel(chanId)
+                message = (await ctx.channel.fetch_message(msgId)).content
+            except Exception as e:
+                await ctx.send("Could not access this message. Either I am not on this server or I do not have access to this channel.")
+                return
+        else:
             msgId = int(circuit)
             message = (await ctx.channel.fetch_message(msgId)).content
             print(message)
-        except Exception as e:
-            message = format_msg(circuit)[0]
+    except Exception as e:
+        message = format_msg(circuit)[0]
 
     @lru_cache
     def get_image(emoji):
