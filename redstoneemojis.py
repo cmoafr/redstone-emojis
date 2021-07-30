@@ -1,13 +1,19 @@
+import asyncio
 import discord
 import json
 import re
 import requests
+import signal
+from asyncpraw import Reddit
+from asyncprawcore.exceptions import NotFound as PrawNotFound
+from datetime import datetime
+from discord.client import _cleanup_loop
 from discord.ext.commands import Bot
 from discord_slash import SlashCommand, SlashContext, SlashCommandOptionType, ButtonStyle
 from discord_slash.utils import manage_commands, manage_components
-from PIL import Image
 from functools import lru_cache
 from io import BytesIO
+from PIL import Image
 
 
 
@@ -180,6 +186,7 @@ class LayersEmbed:
     @slash.component_callback()
     async def __layersCB_prev(button_ctx):
         id_ = button_ctx.origin_message_id
+        if id_==None: return
         origin = LayersEmbed.find(id_)
         if origin:
             await origin.edit(button_ctx, origin.current-1)
@@ -187,6 +194,7 @@ class LayersEmbed:
     @slash.component_callback()
     async def __layersCB_next(button_ctx):
         id_ = button_ctx.origin_message_id
+        if id_==None: return
         origin = LayersEmbed.find(id_)
         if origin:
             await origin.edit(button_ctx, origin.current+1)
@@ -194,6 +202,7 @@ class LayersEmbed:
     @slash.component_callback()
     async def __layersCB_none(button_ctx):
         id_ = button_ctx.origin_message_id
+        if id_==None: return
         origin = LayersEmbed.find(id_)
         if origin:
             await origin.edit(button_ctx, origin.current)
@@ -269,16 +278,18 @@ class Editor:
             message = editor.ctx.message
             if message != None and message.id == id_:
                 return editor
-        raise LookupError("Editor interaction with id "+str(id_)+" not found")
+        return None
 
     @slash.component_callback()
     async def __editorCB_none(btn_ctx):
         self = Editor.find(btn_ctx)
+        if self==None: return
         await self.update(btn_ctx)
 
     @slash.component_callback()
     async def __editorCB_prev(btn_ctx):
         self = Editor.find(btn_ctx)
+        if self==None: return
         names = tuple(emojis_dict.keys())
         i = names.index(self.selected)
         i = (i-1)%len(names)
@@ -288,6 +299,7 @@ class Editor:
     @slash.component_callback()
     async def __editorCB_next(btn_ctx):
         self = Editor.find(btn_ctx)
+        if self==None: return
         names = tuple(emojis_dict.keys())
         i = names.index(self.selected)
         i = (i+1)%len(names)
@@ -297,6 +309,7 @@ class Editor:
     @slash.component_callback()
     async def __editorCB_up(btn_ctx):
         self = Editor.find(btn_ctx)
+        if self==None: return
         if self.y > 0:
             self.y -= 1
         await self.update(btn_ctx)
@@ -304,6 +317,7 @@ class Editor:
     @slash.component_callback()
     async def __editorCB_down(btn_ctx):
         self = Editor.find(btn_ctx)
+        if self==None: return
         if self.y < self.height-1:
             self.y += 1
         await self.update(btn_ctx)
@@ -311,6 +325,7 @@ class Editor:
     @slash.component_callback()
     async def __editorCB_left(btn_ctx):
         self = Editor.find(btn_ctx)
+        if self==None: return
         if self.x > 0:
             self.x -= 1
         await self.update(btn_ctx)
@@ -318,6 +333,7 @@ class Editor:
     @slash.component_callback()
     async def __editorCB_right(btn_ctx):
         self = Editor.find(btn_ctx)
+        if self==None: return
         if self.x < self.width-1:
             self.x += 1
         await self.update(btn_ctx)
@@ -325,6 +341,7 @@ class Editor:
     @slash.component_callback()
     async def __editorCB_place(btn_ctx):
         self = Editor.find(btn_ctx)
+        if self==None: return
         self.grid[self.y][self.x] = self.selected
         await self.update(btn_ctx)
 
@@ -332,6 +349,7 @@ class Editor:
     async def __editorCB_echo(btn_ctx):
         await btn_ctx.edit_origin(content="Your circuit has been echoed back below.", components=None)
         self = Editor.find(btn_ctx)
+        if self==None: return
         message = "\n".join(":"+"::".join(line)+":" for line in self.grid)
         await echo.invoke(self.ctx, message)
 
@@ -339,6 +357,7 @@ class Editor:
     async def __editorCB_export(btn_ctx):
         await btn_ctx.edit_origin(content="Your circuit has been exported to an image below.", components=None)
         self = Editor.find(btn_ctx)
+        if self==None: return
         message = "\n".join(":"+"::".join(line)+":" for line in self.grid)
         await export.invoke(self.ctx, message)
 
@@ -442,13 +461,21 @@ except FileNotFoundError:
         f.write()
     raise FileNotFoundError("Settings file not found. Please put your Discord bot token in the newly created file.")
 
-
-
 try:
     with open("presets.json") as f:
         presets = json.load(f)
 except FileNotFoundError:
     presets = {"and":[[":hd::g1::j1::g0::g0::g0::g0:",":g0::g0::fk::eb::g1::j6::hx:",":hd::g1::j1::g0::g0::g0::g0:"]]}
+
+try:
+    if "reddit" in settings:
+        reddit = Reddit(client_id=settings["reddit"]["id"],
+                             client_secret=settings["reddit"]["secret"],
+                             user_agent=settings["reddit"]["user agent"])
+        del settings["reddit"]["secret"]
+        subreddits = {connection["subreddit"]: connection["discord"] for connection in settings["reddit"]["connections"]}
+except Exception as e:
+    raise e # TODO ?
 
 
 
@@ -457,8 +484,11 @@ except FileNotFoundError:
 @bot.event
 async def on_ready():
     global emojis, emojis_dict
-    commands_list = await manage_commands.get_all_commands(bot.user.id, settings["token"])
-    del settings["token"]
+    try:
+        commands_list = await manage_commands.get_all_commands(bot.user.id, settings["token"])
+        del settings["token"]
+    except KeyError:
+        pass # Bot reconnected, no need to reaquire the list.
 
     emojis = []
     for guild_id in settings["emojis guilds ids"]:
@@ -722,15 +752,94 @@ async def servers(ctx, server=None):
 
 
 
+submission_list = []
+async def get_reddit_embed(submission):
+    global x, embed, submission_list
+    submission_list.append(submission)
+    x = submission
+    embed = discord.Embed(
+        title=submission.title,
+        description=submission.selftext,
+        url="https://reddit.com"+submission.permalink,
+        color=EMBED_COLOR
+    )
+    author = submission.author
+    await submission.load()
+    await author.load()
+    embed.set_author(
+        name=author.name,
+        url="https://www.reddit.com/user/"+author.name,
+        icon_url=author.icon_img
+    )
+    if submission.url:
+        if submission.media:
+            try:
+                embed.set_thumbnail(url=submission.media["oembed"]["thumbnail_url"])
+            except:
+                pass
+        elif "/gallery/" in submission.url:
+            metadata = submission.media_metadata
+            id_ = list(metadata.keys())[0]
+            L = metadata[id_]["o"] if "o" in metadata[id_] else metadata[id_]["p"]
+            if type(L) == dict:
+                L = [L]
+            url = L[-1]["u"]
+            #url = "https://preview.redd.it/" + id_ + "." + metadata[id_]["m"].split("/")[-1]
+            embed.set_image(url=url)
+            return embed
+        else:
+            embed.set_image(url=submission.url)
+    embed.set_footer(text=datetime.utcfromtimestamp(submission.created_utc).strftime("Posted %Y/%m/%d %H:%M:%S UTC"))
+    return embed
+
+
+
+
 
 # Run
 
-if settings["token"] == "":
-    raise RuntimeError("No token found. Please create a bot at https://discord.com/developers/applications and paste the token in the settings file.")
 
-try:
-    bot.run(settings["token"])
-except discord.errors.LoginFailure:
-    raise RuntimeError("Invalid token. Please verify the settings file.")
-except Exception as e:
-    raise e
+
+
+
+async def new_reddit_listener(name, channels):
+    redstone = await reddit.subreddit(name)
+    while not bot.is_ready():
+        await asyncio.sleep(1)
+    print("Connected to r/"+name)
+    
+    async for submission in redstone.stream.submissions(skip_existing=True):
+        #print("r/"+name+":", submission.title)
+        try:
+            embed = await get_reddit_embed(submission)
+            for chan_id in channels:
+                await bot.get_channel(chan_id).send(embed=embed)
+        except (discord.errors.HTTPException, PrawNotFound):
+            pass
+        except Exception as e:
+            print(submission.title, type(e).__name__, e, submission.url)
+            pass # Malformed embed (too long): TODO Shorten if necessary
+
+
+
+def run():
+    if settings["token"] == "":
+        raise RuntimeError("No token found. Please create a bot at https://discord.com/developers/applications and paste the token in the settings file.")
+
+    if "reddit" in settings:
+        for sub in subreddits:
+            asyncio.ensure_future(new_reddit_listener(sub, subreddits[sub]))
+    
+    try:
+        bot.run(settings["token"])
+    except discord.errors.LoginFailure:
+        raise RuntimeError("Invalid token. Please verify the settings file.")
+    except Exception as e:
+        raise e
+
+
+
+
+
+if __name__ == "__main__":
+    run()
