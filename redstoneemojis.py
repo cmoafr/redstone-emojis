@@ -1,6 +1,8 @@
 import asyncio
 import discord
 import json
+import logging
+import os
 import re
 import requests
 import signal
@@ -36,6 +38,35 @@ export_size = 64
 
 bot = Bot(command_prefix=no_prefix)
 slash = SlashCommand(bot, sync_commands=True)
+
+if not os.path.isdir("logs"):
+    os.mkdir("logs")
+i = 1
+while True:
+    logFilename = datetime.date(datetime.now()).strftime(f"logs/%Y-%m-%d_{i}.log")
+    if not os.path.isfile(logFilename):
+        break
+    i += 1
+
+
+
+
+def Logger(name):
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)
+    formatter = logging.Formatter(
+        "[%(asctime)s] [%(name)s/%(levelname)s]: %(message)s",
+        "%H:%M:%S"
+    )
+    consoleHandler = logging.StreamHandler()
+    consoleHandler.setFormatter(formatter)
+    logger.addHandler(consoleHandler)
+    fileHandler = logging.FileHandler(logFilename)
+    fileHandler.setFormatter(formatter)
+    logger.addHandler(fileHandler)
+    return logger
+
+log = Logger("main")
 
 
 
@@ -459,7 +490,8 @@ try:
 except FileNotFoundError:
     with open("settings.json", "w") as f:
         f.write()
-    raise FileNotFoundError("Settings file not found. Please put your Discord bot token in the newly created file.")
+    log.error(FileNotFoundError("Settings file not found. Please put your Discord bot token in the newly created file."))
+    exit()
 
 try:
     with open("presets.json") as f:
@@ -475,7 +507,8 @@ try:
         del settings["reddit"]["secret"]
         subreddits = {connection["subreddit"]: connection["discord"] for connection in settings["reddit"]["connections"]}
 except Exception as e:
-    raise e # TODO ?
+    log.error(e) # TODO ?
+    exit()
 
 
 
@@ -503,8 +536,8 @@ async def on_ready():
             name="with redstone! Use /help"
         )
     )
-    
-    print("Connected on {} guilds with {} ({}) commands.".format(len(bot.guilds), len(commands.list), len(commands_list)))
+
+    log.info("Connected on {} guilds with {} ({}) commands.".format(len(bot.guilds), len(commands.list), len(commands_list)))
 
 
 
@@ -569,7 +602,8 @@ async def editor(ctx, width, height):
         await Editor(ctx, int(width), int(height)).send()
     except Exception as e:
         #await ctx.send("An error occured. More details about errors will be added later.")
-        raise e
+        log.error(e)
+        exit()
 
 
 
@@ -625,7 +659,6 @@ async def export(ctx, circuit):
         else:
             msgId = int(circuit)
             message = (await ctx.channel.fetch_message(msgId)).content
-            print(message)
     except Exception as e:
         message = format_msg(circuit)[0]
 
@@ -806,10 +839,10 @@ async def new_reddit_listener(name, channels):
     redstone = await reddit.subreddit(name)
     while not bot.is_ready():
         await asyncio.sleep(1)
-    print("Connected to r/"+name)
+    log.info("Connected to r/"+name)
     
     async for submission in redstone.stream.submissions(skip_existing=True):
-        #print("r/"+name+":", submission.title)
+        #log.info("r/"+name+":", submission.title)
         try:
             embed = await get_reddit_embed(submission)
             for chan_id in channels:
@@ -817,14 +850,15 @@ async def new_reddit_listener(name, channels):
         except (discord.errors.HTTPException, PrawNotFound):
             pass
         except Exception as e:
-            print(submission.title, type(e).__name__, e, submission.url)
+            log.error("r/"+name, submission.title, type(e).__name__, e, submission.url)
             pass # Malformed embed (too long): TODO Shorten if necessary
 
 
 
 def run():
     if settings["token"] == "":
-        raise RuntimeError("No token found. Please create a bot at https://discord.com/developers/applications and paste the token in the settings file.")
+        log.error(RuntimeError("No token found. Please create a bot at https://discord.com/developers/applications and paste the token in the settings file."))
+        exit()
 
     if "reddit" in settings:
         for sub in subreddits:
@@ -833,9 +867,11 @@ def run():
     try:
         bot.run(settings["token"])
     except discord.errors.LoginFailure:
-        raise RuntimeError("Invalid token. Please verify the settings file.")
+        log.errror(RuntimeError("Invalid token. Please verify the settings file."))
+        exit()
     except Exception as e:
-        raise e
+        log.error(e)
+        exit()
 
 
 
