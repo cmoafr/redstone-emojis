@@ -6,8 +6,9 @@ import os
 import re
 import requests
 import signal
+import sqlite3
 from asyncpraw import Reddit
-from asyncprawcore.exceptions import NotFound as PrawNotFound
+from asyncprawcore.exceptions import NotFound as PrawNotFound, RequestException
 from datetime import datetime
 from discord.client import _cleanup_loop
 from discord.ext.commands import Bot
@@ -21,6 +22,7 @@ from PIL import Image
 
 EMPTY = "\u200b"
 EMBED_COLOR = 0xFF0000
+BACK_EMOJI = '\N{BLACK LEFT-POINTING DOUBLE TRIANGLE}' # /!\ Must be Unicode no shortcode
 
 no_prefix = lambda bot, message: '<' if message.content.startswith('>') else '>'
 
@@ -28,6 +30,7 @@ emoji_full_pattern = re.compile("<a?:[a-zA-Z0-9_]{2,32}:[0-9]+>")
 emoji_pattern = re.compile(":[a-zA-Z0-9_]{2,32}:")
 
 AIR = "g0"
+BLOCK = "g1"
 MARKER_HORIZ = "fb"
 MARKER_VERTI = "fc"
 export_size = 64
@@ -47,6 +50,9 @@ while True:
     if not os.path.isfile(logFilename):
         break
     i += 1
+
+database = sqlite3.connect("data.db")
+cursor = database.cursor()
 
 
 
@@ -245,6 +251,9 @@ class Editor:
     list = []
 
     def __init__(self, ctx, width, height):
+        if int(width) != width or width <= 0 or int(height) != height or height <= 0:
+            self.send = lambda: False
+            ctx.send("Invalid size.")
         self.ctx = ctx
         self.width = width
         self.height = height
@@ -254,22 +263,33 @@ class Editor:
     def reset_message(self):
         self.x = 0
         self.y = 0
-        self.selected = AIR
+        self.selected = BLOCK
+        cursor.execute("SELECT menu FROM emojis WHERE icon=?", [self.selected])
+        self.menu = [cursor.fetchone()[0]]
+        while self.menu[0] != None:
+            cursor.execute("SELECT parent FROM menus WHERE name=?", [self.menu[0]])
+            self.menu.insert(0, cursor.fetchone()[0])
         self.grid = [[AIR for j in range(self.width)] for i in range(self.height)]
+        self.undos = []
         self.buttons = [
-            [(1, "<<", "__editorCB_prev"),      (2, self.selected, "__editorCB_none"),  (1, ">>", "__editorCB_next")        ],
-            [(2, "", "__editorCB_none"),        (1, "˄", "__editorCB_up"),              (2, "", "__editorCB_none")          ],
-            [(1, "˂", "__editorCB_left"),       (1, "Place", "__editorCB_place"),       (1, "˃", "__editorCB_right")        ],
-            [(3, "Echo", "__editorCB_echo"),    (1, "˅", "__editorCB_down"),            (3, "Export", "__editorCB_export")  ]
+            [(4, "Undo", "__editorCB_undo"),    (1, "˄", "__editorCB_up"),      (1, "Air", "__editorCB_air")         ],
+            [(1, "˂", "__editorCB_left"),       (1, AIR, "__editorCB_place"),   (1, "˃", "__editorCB_right")        ],
+            [(3, "Echo", "__editorCB_echo"),    (1, "˅", "__editorCB_down"),    (3, "PNG", "__editorCB_export")  ]
         ]
+        if self.width * self.height > 2000/24.5:
+            self.buttons[2][0] = (2, "", "__editorCB_none")
 
     def get_data(self):
-        border_horiz = [AIR] + [MARKER_VERTI if j == self.x else AIR for j in range(self.width)] + [AIR]
+
+        sx = max(min(self.x-3, self.width-7), 0)
+        sy = max(min(self.y-3, self.height-7), 0)    
+        ex, ey = min(sx+7, self.width), min(sy+7, self.height)
+        border_horiz = [AIR] + [MARKER_VERTI if j == self.x else AIR for j in range(sx, ex)] + [AIR]
         grid = [border_horiz]
-        for i in range(self.height):
+        for i in range(sy, ey):
             border_vert = MARKER_HORIZ if i == self.y else AIR
             line = [border_vert]
-            for j in range(self.width):
+            for j in range(sx, ex):
                 line.append(self.grid[i][j])
             line += [border_vert]
             grid.append(line)
@@ -277,14 +297,52 @@ class Editor:
 
         message = "\n".join("".join(str(emojis_dict[name]) for name in line) for line in grid)
 
-        self.buttons[0][1] = (2, self.selected, "__editorCB_none")
 
-        buttons = []
+        self.buttons[1][1] = (1, self.selected, "__editorCB_place")
+
+        options = []
+        if self.menu[-1] == None:
+            cursor.execute("SELECT * FROM menus WHERE parent IS NULL")
+        else:
+            options = [manage_components.create_select_option(
+                label="< Back",
+                value="Menu ",
+                emoji=BACK_EMOJI
+            )]
+            cursor.execute("SELECT * FROM menus WHERE parent=?", [self.menu[-1]])
+        menu_list = cursor.fetchall()
+        menu_list.sort(key=lambda item: item[3])
+        for name, icon, parent, order in menu_list:
+            options.append(manage_components.create_select_option(
+                label="> "+name[:23],
+                value="Menu "+name,
+                emoji=emojis_dict[icon]
+            ))
+
+        if self.menu[-1] == None:
+            cursor.execute("SELECT * FROM emojis WHERE menu IS NULL")
+        else:
+            cursor.execute("SELECT * FROM emojis WHERE menu=?", [self.menu[-1]])
+        emojis_list = cursor.fetchall()
+        emojis_list.sort(key=lambda item: item[1])
+        for name, icon, menu in emojis_list:
+            options.append(manage_components.create_select_option(
+                label=name[:25],
+                value="Emoji "+icon,
+                emoji=emojis_dict[icon],
+                default=icon==self.selected
+            ))
+        
+        buttons = [[manage_components.create_select(
+            options=options,
+            custom_id="__editorCB_select"
+        )]]
+        
         for raw_line in self.buttons:
             line = []
             for raw in raw_line:
-                kwargs = {"style": raw[0], "custom_id": raw[2]}
                 name = raw[1] or EMPTY
+                kwargs = {"style": raw[0], "custom_id": raw[2]}
                 if name in emojis_dict:
                     kwargs["emoji"] = emojis_dict[name]
                 else:
@@ -309,38 +367,33 @@ class Editor:
             message = editor.ctx.message
             if message != None and message.id == id_:
                 return editor
-        return None
+        log.exception(LookupError("Editor interaction with id "+str(id_)+" not found"))
 
     @slash.component_callback()
     async def __editorCB_none(btn_ctx):
         self = Editor.find(btn_ctx)
-        if self==None: return
         await self.update(btn_ctx)
 
     @slash.component_callback()
-    async def __editorCB_prev(btn_ctx):
+    async def __editorCB_select(btn_ctx):
         self = Editor.find(btn_ctx)
-        if self==None: return
-        names = tuple(emojis_dict.keys())
-        i = names.index(self.selected)
-        i = (i-1)%len(names)
-        self.selected = names[i]
-        await self.update(btn_ctx)
-
-    @slash.component_callback()
-    async def __editorCB_next(btn_ctx):
-        self = Editor.find(btn_ctx)
-        if self==None: return
-        names = tuple(emojis_dict.keys())
-        i = names.index(self.selected)
-        i = (i+1)%len(names)
-        self.selected = names[i]
+        value = btn_ctx.values[0]
+        i = value.find(" ")
+        type, value = value[:i], value[i+1:]
+        if type == "Menu":
+            if value:
+                self.menu.append(value)
+            else:
+                self.menu.pop()
+        elif type == "Emoji":
+            self.selected = value
+        else:
+            pass # Should never happen
         await self.update(btn_ctx)
 
     @slash.component_callback()
     async def __editorCB_up(btn_ctx):
         self = Editor.find(btn_ctx)
-        if self==None: return
         if self.y > 0:
             self.y -= 1
         await self.update(btn_ctx)
@@ -348,7 +401,6 @@ class Editor:
     @slash.component_callback()
     async def __editorCB_down(btn_ctx):
         self = Editor.find(btn_ctx)
-        if self==None: return
         if self.y < self.height-1:
             self.y += 1
         await self.update(btn_ctx)
@@ -356,7 +408,6 @@ class Editor:
     @slash.component_callback()
     async def __editorCB_left(btn_ctx):
         self = Editor.find(btn_ctx)
-        if self==None: return
         if self.x > 0:
             self.x -= 1
         await self.update(btn_ctx)
@@ -364,7 +415,6 @@ class Editor:
     @slash.component_callback()
     async def __editorCB_right(btn_ctx):
         self = Editor.find(btn_ctx)
-        if self==None: return
         if self.x < self.width-1:
             self.x += 1
         await self.update(btn_ctx)
@@ -372,15 +422,30 @@ class Editor:
     @slash.component_callback()
     async def __editorCB_place(btn_ctx):
         self = Editor.find(btn_ctx)
-        if self==None: return
-        self.grid[self.y][self.x] = self.selected
+        old = self.grid[self.y][self.x]
+        if old != self.selected:
+            self.undos.append((self.x, self.y, old, self.selected))
+            self.grid[self.y][self.x] = self.selected
+        await self.update(btn_ctx)
+
+    @slash.component_callback()
+    async def __editorCB_air(btn_ctx):
+        self = Editor.find(btn_ctx)
+        self.grid[self.y][self.x] = AIR
+        await self.update(btn_ctx)
+
+    @slash.component_callback()
+    async def __editorCB_undo(btn_ctx):
+        self = Editor.find(btn_ctx)
+        if self.undos:
+            x, y, old, new = self.undos.pop()
+            self.grid[y][x] = old
         await self.update(btn_ctx)
 
     @slash.component_callback()
     async def __editorCB_echo(btn_ctx):
         await btn_ctx.edit_origin(content="Your circuit has been echoed back below.", components=None)
         self = Editor.find(btn_ctx)
-        if self==None: return
         message = "\n".join(":"+"::".join(line)+":" for line in self.grid)
         await echo.invoke(self.ctx, message)
 
@@ -388,7 +453,6 @@ class Editor:
     async def __editorCB_export(btn_ctx):
         await btn_ctx.edit_origin(content="Your circuit has been exported to an image below.", components=None)
         self = Editor.find(btn_ctx)
-        if self==None: return
         message = "\n".join(":"+"::".join(line)+":" for line in self.grid)
         await export.invoke(self.ctx, message)
 
@@ -463,7 +527,7 @@ def format_msg(message, max_length=2000, split=True):
         return "\n\n".join(splited)
 
     splited = [x.strip() for x in splited]
-    if max(len(x) for x in splited) > max_length:
+    if max_length != None and max(len(x) for x in splited) > max_length:
         return ["Message is too long and could not be send."]
     
     return splited # TODO: Join messages if possible
@@ -489,8 +553,8 @@ try:
         settings = json.load(f)
 except FileNotFoundError:
     with open("settings.json", "w") as f:
-        f.write()
-    log.error(FileNotFoundError("Settings file not found. Please put your Discord bot token in the newly created file."))
+        f.write(default_settings)
+    log.exception(FileNotFoundError("Settings file not found. Please put your Discord bot token in the newly created file."))
     exit()
 
 try:
@@ -507,8 +571,7 @@ try:
         del settings["reddit"]["secret"]
         subreddits = {connection["subreddit"]: connection["discord"] for connection in settings["reddit"]["connections"]}
 except Exception as e:
-    log.error(e) # TODO ?
-    exit()
+    log.exception(e) # TODO ?
 
 
 
@@ -602,8 +665,7 @@ async def editor(ctx, width, height):
         await Editor(ctx, int(width), int(height)).send()
     except Exception as e:
         #await ctx.send("An error occured. More details about errors will be added later.")
-        log.error(e)
-        exit()
+        log.exception(e)
 
 
 
@@ -660,7 +722,7 @@ async def export(ctx, circuit):
             msgId = int(circuit)
             message = (await ctx.channel.fetch_message(msgId)).content
     except Exception as e:
-        message = format_msg(circuit)[0]
+        message = format_msg(circuit, max_length=None)[0]
 
     @lru_cache
     def get_image(emoji):
@@ -840,24 +902,28 @@ async def new_reddit_listener(name, channels):
     while not bot.is_ready():
         await asyncio.sleep(1)
     log.info("Connected to r/"+name)
-    
-    async for submission in redstone.stream.submissions(skip_existing=True):
-        #log.info("r/"+name+":", submission.title)
+
+    while True:
         try:
-            embed = await get_reddit_embed(submission)
-            for chan_id in channels:
-                await bot.get_channel(chan_id).send(embed=embed)
-        except (discord.errors.HTTPException, PrawNotFound):
+            async for submission in redstone.stream.submissions(skip_existing=True):
+                #log.info("r/"+name+":", submission.title)
+                try:
+                    embed = await get_reddit_embed(submission)
+                    for chan_id in channels:
+                        await bot.get_channel(chan_id).send(embed=embed)
+                except (discord.errors.HTTPException, PrawNotFound):
+                    pass
+                except Exception as e:
+                    log.exception("r/"+name, submission.title, type(e).__name__, e, submission.url)
+                    pass # Malformed embed (too long): TODO Shorten if necessary
+        except RequestException:
             pass
-        except Exception as e:
-            log.error("r/"+name, submission.title, type(e).__name__, e, submission.url)
-            pass # Malformed embed (too long): TODO Shorten if necessary
 
 
 
 def run():
     if settings["token"] == "":
-        log.error(RuntimeError("No token found. Please create a bot at https://discord.com/developers/applications and paste the token in the settings file."))
+        log.exception(RuntimeError("No token found. Please create a bot at https://discord.com/developers/applications and paste the token in the settings file."))
         exit()
 
     if "reddit" in settings:
@@ -870,8 +936,7 @@ def run():
         log.errror(RuntimeError("Invalid token. Please verify the settings file."))
         exit()
     except Exception as e:
-        log.error(e)
-        exit()
+        log.exception(e)
 
 
 
