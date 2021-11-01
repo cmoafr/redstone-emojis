@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+import re
 
 def setup(bot):
     bot.add_cog(Autoreply(bot))
@@ -23,7 +24,11 @@ class Autoreply(commands.Cog):
             chan = message.channel
 
             # Hi X I'm dad
-            if " i'm " in lower:
-                i = lower.index(" i'm ") + 4 # TODO: Include ponctuation and such
-                name = content[i:].strip()
-                await chan.send("Hi " + name + " I'm " + self.bot.user.mention)
+            im = re.search(r"""
+                           (.*?[\s])?          # Some text
+                           (im|i\ am|i\'m)[\s] # The "i'm" and a whitespace
+                           (?P<name>.+)       # The name
+                           """, lower, re.VERBOSE)
+            if im:
+                name = im.group("name").strip()
+                await chan.send("Hi " + name + ", I'm " + self.bot.user.mention)
