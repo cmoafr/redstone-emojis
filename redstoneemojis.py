@@ -1,5 +1,6 @@
 import discord
 from discord.ext.commands import Bot
+from discord_slash import SlashCommand
 import json
 import os
 
@@ -7,6 +8,7 @@ import os
 
 no_prefix = lambda bot, message: '<' if message.content.startswith('>') else '>'
 bot = Bot(command_prefix=no_prefix)
+slash = SlashCommand(bot, sync_commands=True)
 
 
 
