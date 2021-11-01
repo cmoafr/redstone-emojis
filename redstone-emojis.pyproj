@@ -21,6 +21,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="cogs\moderation.py" />
     <Compile Include="cogs\autoreply.py">
       <SubType>Code</SubType>
     </Compile>
