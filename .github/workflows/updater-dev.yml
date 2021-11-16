@@ -1,0 +1,14 @@
+name: updater-dev
+on: workflow_dispatch
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Run update script
+        run: ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no root@topred.fr /root/redstone-emojis/update-dev.sh
