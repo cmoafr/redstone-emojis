@@ -27,7 +27,7 @@ class Autoreply(commands.Cog):
             im = re.search(r"""
                            (.*?[\s])?          # Some text
                            (im|i\ am|i\'m)[\s] # The "i'm" and a whitespace
-                           (?P<name>.+)       # The name
+                           (?P<name>.+)        # The name
                            """, lower, re.VERBOSE)
             if im:
                 name = im.group("name").strip()

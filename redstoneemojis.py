@@ -23,9 +23,10 @@ if __name__ == "__main__":
 
     with open("settings.json") as f:
         settings = json.load(f)
-
-    for filename in os.listdir("./cogs/"):
-        if filename.endswith(".py"):
-            bot.load_extension("cogs." + filename[:-3])
+    
+    for root, dirs, files in os.walk("./cogs"):
+        for filename in files:
+            if filename.endswith(".py"):
+                bot.load_extension("cogs." + filename[:-3])
 
     bot.run(settings["token"])
