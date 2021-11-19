@@ -20,7 +20,6 @@ class Autoreply(commands.Cog):
     async def on_message(self, message):
         if (not message.author.bot):
             content = message.content
-            lower = content.lower()
             chan = message.channel
 
             # Hi X I'm dad
@@ -28,7 +27,7 @@ class Autoreply(commands.Cog):
                            (.*?[\s])?          # Some text
                            (im|i\ am|i\'m)[\s] # The "i'm" and a whitespace
                            (?P<name>.+)        # The name
-                           """, lower, re.VERBOSE)
+                           """, content, re.VERBOSE + re.IGNORECASE)
             if im:
                 name = im.group("name").strip()
                 await chan.send("Hi " + name + ", I'm " + self.bot.user.mention)

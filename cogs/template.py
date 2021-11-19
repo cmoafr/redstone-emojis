@@ -15,7 +15,7 @@ class Template(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        #print("Cog NAME HERE ready!")
+        pass #print("Cog NAME HERE ready!")
 
     @commands.Cog.listener()
     async def on_message(self, message):
