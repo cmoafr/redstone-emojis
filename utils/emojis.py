@@ -20,3 +20,8 @@ class Emojis:
                     return e
 
         return None
+    
+    def equal(self, e1, e2):
+        e1 = self.get(e1) or e1
+        e2 = self.get(e2) or e2
+        return e1 == e2
