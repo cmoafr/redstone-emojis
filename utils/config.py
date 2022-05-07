@@ -10,8 +10,8 @@ def get_config(name="bot"):
     filepath = f"config/{name}.json"
     os.makedirs("config", exist_ok=True)
 
-    if os.stat(filepath).st_size == 0:
-        # If the config file is empty
+    if not os.path.exists(filepath) or os.stat(filepath).st_size == 0:
+        # If the config file does not exist or is empty
         config = dict()
     else:
         with open(filepath, "r") as config_file:

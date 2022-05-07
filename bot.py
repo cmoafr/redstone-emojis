@@ -15,7 +15,9 @@ class Bot(commands.Bot):
             intents=discord.Intents.all()
         )
 
-        self.config = {}
+        if not os.path.exists("config/bot.json"):
+            raise FileNotFoundError("The bot has no config file. Please copy the default template and change the token.")
+        self.config = get_config()
 
     async def on_ready(self) -> None:
         self.logger.info(f"Logged in as {self.user}")
@@ -28,7 +30,7 @@ class Bot(commands.Bot):
         # Load the cogs
         for filename in os.listdir("cogs"):
             if filename.endswith(".py"):
-                self.load_extension(f"cogs.{filename[:-3]}")
+                await self.load_extension(f"cogs.{filename[:-3]}")
 
         # Synchronize the commands.
         async def sync():
@@ -43,7 +45,6 @@ def run() -> None:
 
     logger.info("Initializing bot...")
     bot = Bot()
-    bot.config = get_config()
     bot.logger = logger
 
     try:

@@ -1,0 +1,8 @@
+{
+    "hello": {
+        "pattern": "^Hello",
+        "response": "Hey {message.author.name}! How's it going?",
+        "probability": 0,
+        "break": true
+    }
+}
