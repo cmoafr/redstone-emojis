@@ -36,6 +36,8 @@ class Bot(commands.Bot):
         async def sync():
             self.logger.debug("Synchronizing commands...")
             await self.wait_until_ready()
+            for guild in self.guilds:
+                await self.tree.sync(guild=guild)
             await self.tree.sync()
             self.logger.debug("Commands synchronized.")
         self.loop.create_task(sync())
@@ -50,6 +52,8 @@ def run() -> None:
     try:
         logger.info("Starting bot...")
         bot.run(bot.config["token"])
+    except Exception as e:
+        logger.exception(e)
     finally:
         logger.info("Goodbye!")
 
