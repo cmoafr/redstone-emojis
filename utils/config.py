@@ -14,7 +14,7 @@ def get_config(name="bot"):
         # If the config file does not exist or is empty
         config = dict()
     else:
-        with open(filepath, "r") as config_file:
+        with open(filepath, "r", encoding="utf-8") as config_file:
             config = json.load(config_file)
 
     return default | config
@@ -26,7 +26,7 @@ def get_default_config(name="bot"):
 
     filepath = f"defaults/{name}.json"
     if os.path.exists(filepath):
-        with open(filepath, "r") as f:
+        with open(filepath, "r", encoding="utf-8") as f:
             return json.load(f)
     return dict()
 
