@@ -37,7 +37,10 @@ class Bot(commands.Bot):
             self.logger.debug("Synchronizing commands...")
             await self.wait_until_ready()
             for guild in self.guilds:
-                await self.tree.sync(guild=guild)
+                try:
+                    await self.tree.sync(guild=guild)
+                except discord.Forbidden:
+                    self.logger.warning(f"Bot is missing permissions to sync commands in {guild.name}")
             await self.tree.sync()
             self.logger.debug("Commands synchronized.")
         self.loop.create_task(sync())
