@@ -10,14 +10,16 @@ from utils.config import get_config
 BLOCK_SIZE = 64
 BORDER_SIZE = 8
 RENDER_DISTANCE = 5
+NONE = "Air"
+DEFAULT = "Block"
 
 class BaseView(discord.ui.View):
     def __init__(self, bot: discord.Client):
         self.bot = bot
-        self.blocks = get_config("blocks")
-        self.block = self.blocks["iron_block"]
+        self.blocks = get_config("emojis")
+        self.block = DEFAULT
         self.x, self.y = 0, 0
-        self.grid = {} # (x, y) -> Block
+        self.grid = {} # (x, y) -> Block (emoji id)
         super().__init__()
 
     @lru_cache(maxsize=64)
@@ -74,7 +76,7 @@ class BaseView(discord.ui.View):
         ))
         for x in range(min_x, max_x):
             for y in range(min_y, max_y):
-                block = self.grid.get((x, y), self.blocks["air"])
+                block = self.grid.get((x, y), self.blocks[NONE])
                 invert = x == self.x and y == self.y
                 emoji = self.get_emoji(block, BLOCK_SIZE, invert, BORDER_SIZE)
                 image.paste(

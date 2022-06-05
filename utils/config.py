@@ -1,12 +1,15 @@
 import json
 import os
 
-def get_config(name="bot"):
+def get_config(name="bot", with_default=True):
     """
     Returns the config for the given name.
     """
 
-    default = get_default_config(name)
+    if with_default:
+        default = get_default_config(name)
+    else:
+        default = dict()
     filepath = f"config/{name}.json"
     os.makedirs("config", exist_ok=True)
 

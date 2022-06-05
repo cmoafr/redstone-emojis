@@ -28,7 +28,7 @@ class MainView(BaseView):
 
     @discord.ui.button(label='Place', style=discord.ButtonStyle.blurple, row=1)
     async def place(self, interaction, button):
-        self.grid[(self.x, self.y)] = self.block
+        self.grid[(self.x, self.y)] = self.blocks[self.block]
         await self.send(interaction)
 
     @discord.ui.button(emoji='\u27a1', style=discord.ButtonStyle.blurple, row=1)
