@@ -37,7 +37,7 @@ class MainView(BaseView):
         self.x += 1
         await self.send(interaction)
 
-    @discord.ui.button(label='Select', style=discord.ButtonStyle.blurple, row=2)
+    @discord.ui.button(label='Pick', style=discord.ButtonStyle.blurple, row=2)
     async def search(self, interaction, button):
         await interaction.response.send_modal(Search(self))
 
