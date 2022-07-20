@@ -1,6 +1,7 @@
 import discord
 
 from editor.base import BaseView
+from editor.search import Search
 
 class MainView(BaseView):
     def __init__(self, bot):
@@ -36,10 +37,9 @@ class MainView(BaseView):
         self.x += 1
         await self.send(interaction)
 
-    @discord.ui.button(label='Block', style=discord.ButtonStyle.blurple, row=2, disabled=True)
+    @discord.ui.button(label='Select', style=discord.ButtonStyle.blurple, row=2)
     async def search(self, interaction, button):
-        # TODO
-        await self.send(interaction)
+        await interaction.response.send_modal(Search(self))
 
     @discord.ui.button(emoji='\u2b07', style=discord.ButtonStyle.blurple, row=2)
     async def down(self, interaction, button):

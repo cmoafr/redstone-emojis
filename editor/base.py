@@ -97,7 +97,7 @@ class BaseView(discord.ui.View):
         if interaction.command is None:
             # This wasn't a command so we edit the message
             # to prevent spamming the channel
-            await interaction.response.edit_message(view=self, attachments=[file])
+            await interaction.response.edit_message(content=None, view=self, attachments=[file])
         else:
             await interaction.response.send_message(view=self, file=file, ephemeral=True)
         await self.wait()
