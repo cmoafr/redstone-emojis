@@ -1,26 +1,32 @@
 import discord
 
+from difflib import SequenceMatcher
+
 from editor.base import BaseView
 
-def get_scores(options, selected):
+def get_scores(options, selected, exact_matches_increment=1):
     """
-    Calculates the scores for each option using the longest common subsequence algorithm.
+    Calculates the scores for each option using the builtin SequenceMatcher.
     """
-    def lcs(a, b):
-        c = [[0 for _ in range(len(b) + 1)] for _ in range(len(a) + 1)]
-        for i in range(len(a) + 1):
-            c[i][0] = 0
-        for j in range(len(b) + 1):
-            c[0][j] = 0
-        for i in range(1, len(a) + 1):
-            for j in range(1, len(b) + 1):
-                if a[i - 1] == b[j - 1]:
-                    c[i][j] = c[i - 1][j - 1] + 1
-                else:
-                    c[i][j] = max(c[i - 1][j], c[i][j - 1])
-        return c[-1][-1]
+    sm = SequenceMatcher(lambda c: not c.isalnum(), selected.lower())
+    scores = {}
 
-    return {option: lcs(option.lower(), selected.lower()) for option in options}
+    for option in options:
+        sm.set_seq2(option.lower())
+        score = sm.ratio()
+        exact = option.lower().split(" ")
+        for word in selected.lower().split(" "):
+            if word in exact:
+                score += exact_matches_increment # The more exact words in common, the higher it should be
+        scores[option] = score
+
+    return scores
+
+def get_best_matches(options, text, count=None):
+    options = list(options)
+    scores = get_scores(options, text, 0.5)
+    options.sort(key=scores.get, reverse=True)
+    return options[:count]
 
 
 
@@ -51,16 +57,14 @@ class SelectorView(BaseView):
         self.main_view = main_view
         self.search_block = search_block
 
-        scores = get_scores(self.main_view.blocks, search_block)
         options = [
             discord.SelectOption(
                 label=option,
                 value=option,
                 emoji=self.bot.get_emoji(self.main_view.blocks[option])
             )
-            for option in sorted(scores, key=scores.get)[:25]
+            for option in get_best_matches(self.main_view.blocks, search_block, 25)
         ]
-        #print(sorted(scores, key=scores.get)[:25])
 
         self.dropdown = SelectorDropdown(self.main_view, options, self.search_block, selected)
         self.add_item(self.dropdown)
