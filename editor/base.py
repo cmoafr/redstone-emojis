@@ -6,6 +6,7 @@ from PIL import Image, ImageOps
 import requests
 
 from utils.config import get_config
+from utils.shareability import Shareability
 
 BLOCK_SIZE = 64
 BORDER_SIZE = 1
@@ -19,13 +20,20 @@ NONE = "Air"
 DEFAULT = "Block"
 
 class BaseView(discord.ui.View):
-    def __init__(self, bot: discord.Client):
+    def __init__(self, bot, shareability, user_id):
         self.bot = bot
+        self.shareability = shareability
+        self.user_id = user_id
         self.blocks = get_config("emojis", with_default=False)
         self.block = DEFAULT
         self.x, self.y = 0, 0
         self.grid = {} # (x, y) -> Block (emoji id)
         super().__init__()
+
+    def is_allowed(self, interaction):
+        if interaction.user.guild_permissions.administrator or interaction.user.id in self.bot.config["admin ids"]:
+            return True # Bypass Shareability
+        return self.shareability != Shareability.VISIBLE or interaction.user.id == self.user_id
 
     @lru_cache(maxsize=64)
     def get_emoji(self, block=None, size=16):
@@ -122,5 +130,5 @@ class BaseView(discord.ui.View):
             # to prevent spamming the channel
             await interaction.response.edit_message(content=None, view=self, attachments=[file])
         else:
-            await interaction.response.send_message(view=self, file=file, ephemeral=True)
+            await interaction.response.send_message(view=self, file=file, ephemeral=self.shareability == Shareability.PRIVATE)
         await self.wait()

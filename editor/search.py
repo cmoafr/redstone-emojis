@@ -17,6 +17,9 @@ class Search(discord.ui.Modal):
     block = discord.ui.TextInput(label="Block name")
 
     async def on_submit(self, interaction):
+        if not self.view.is_allowed(interaction):
+            return
+
         block = self.block.value
 
         # The block exists, change and return to main menu

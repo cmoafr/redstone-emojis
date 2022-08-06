@@ -38,6 +38,10 @@ class SelectorDropdown(discord.ui.Select):
         self.selected = selected
 
     async def callback(self, interaction):
+        if not self.view.is_allowed(interaction):
+            await interaction.response.defer()
+            return
+        
         selected = self.values[0]
 
         view = SelectorView(self.main_view, self.search_block, selected)
@@ -53,7 +57,7 @@ class SelectorDropdown(discord.ui.Select):
 
 class SelectorView(BaseView):
     def __init__(self, main_view, search_block, selected=None):
-        super().__init__(main_view.bot)
+        super().__init__(main_view.bot, main_view.shareability, main_view.user_id)
         self.main_view = main_view
         self.search_block = search_block
 
@@ -71,6 +75,9 @@ class SelectorView(BaseView):
 
     @discord.ui.button(label='Search again', style=discord.ButtonStyle.blurple, row=1)
     async def search(self, interaction, button):
+        if not self.main_view.is_allowed(interaction):
+            return
+        
         # Local import to prevent circular import
         # TODO: Refacto this
         from editor.search import Search
@@ -79,6 +86,9 @@ class SelectorView(BaseView):
         
     @discord.ui.button(label='Confirm', style=discord.ButtonStyle.green, row=1, disabled=True)
     async def confirm(self, interaction, button):
+        if not self.main_view.is_allowed(interaction):
+            return
+        
         if self.dropdown.selected:
             self.main_view.block = self.dropdown.selected
             await self.main_view.send(interaction)
