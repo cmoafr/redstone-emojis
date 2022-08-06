@@ -21,7 +21,7 @@ DEFAULT = "Block"
 class BaseView(discord.ui.View):
     def __init__(self, bot: discord.Client):
         self.bot = bot
-        self.blocks = get_config("emojis")
+        self.blocks = get_config("emojis", with_default=False)
         self.block = DEFAULT
         self.x, self.y = 0, 0
         self.grid = {} # (x, y) -> Block (emoji id)
