@@ -1,9 +1,11 @@
 import discord
+from discord.ext import commands
 
 from functools import lru_cache
 from io import BytesIO
 from PIL import Image, ImageOps
 import requests
+from typing import Optional, Tuple
 
 from utils.config import get_config
 from utils.shareability import Shareability
@@ -20,7 +22,7 @@ NONE = "Air"
 DEFAULT = "Block"
 
 class BaseView(discord.ui.View):
-    def __init__(self, bot, shareability, user_id):
+    def __init__(self, bot: commands.Bot, shareability: Shareability, user_id: int) -> None:
         self.bot = bot
         self.shareability = shareability
         self.user_id = user_id
@@ -30,13 +32,13 @@ class BaseView(discord.ui.View):
         self.grid = {} # (x, y) -> Block (emoji id)
         super().__init__()
 
-    def is_allowed(self, interaction):
+    def is_allowed(self, interaction: discord.Interaction) -> bool:
         if interaction.user.guild_permissions.administrator or interaction.user.id in self.bot.config["admin ids"]:
             return True # Bypass Shareability
         return self.shareability != Shareability.VISIBLE or interaction.user.id == self.user_id
 
     @lru_cache(maxsize=64)
-    def get_emoji(self, block=None, size=16):
+    def get_emoji(self, block: Optional[str] = None, size: int = 16) -> Image.Image:
         if block is None:
             block = self.block
         emoji = self.bot.get_emoji(block)
@@ -49,7 +51,7 @@ class BaseView(discord.ui.View):
         return Image.open(r.raw).convert("RGBA").resize((size, size), resample=0)
 
     #@lru_cache(maxsize=64)
-    def process_emoji(self, image, grid_color, grid_width=1, invert_border_size=0):
+    def process_emoji(self, image: Image.Image, grid_color: Tuple[int, int, int, int], grid_width: int = 1, invert_border_size: int = 0) -> Image.Image:
 
         # Create border
         if grid_width:
@@ -67,7 +69,7 @@ class BaseView(discord.ui.View):
 
         return image
 
-    def get_image(self, render_distance=RENDER_DISTANCE, block_size=BLOCK_SIZE, border_size=BORDER_SIZE, invert_size=INVERT_SIZE, expand_cursor=True):
+    def get_image(self, render_distance: int = RENDER_DISTANCE, block_size: int = BLOCK_SIZE, border_size: int = BORDER_SIZE, invert_size: int = INVERT_SIZE, expand_cursor: bool = True) -> Image.Image:
 
         if self.grid:
             # Get the grid bounds
@@ -118,7 +120,7 @@ class BaseView(discord.ui.View):
         
         return image
     
-    async def send(self, interaction: discord.Interaction):
+    async def send(self, interaction: discord.Interaction) -> None:
         image = self.get_image()
         with BytesIO() as image_bin:
             image.save(image_bin, "PNG")

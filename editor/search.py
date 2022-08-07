@@ -2,13 +2,14 @@ import discord
 
 from random import choice
 
+from editor.base import BaseView
 from editor.selector import SelectorView
 
 class Search(discord.ui.Modal):
 
-    def __init__(self, view):
+    def __init__(self, view: BaseView) -> None:
         self.view = view
-        super().__init__(title='Search')
+        super().__init__(title="Search")
 
         self.block.placeholder = choice(list(self.view.blocks))
         self.error = None
@@ -16,7 +17,7 @@ class Search(discord.ui.Modal):
 
     block = discord.ui.TextInput(label="Block name")
 
-    async def on_submit(self, interaction):
+    async def on_submit(self, interaction: discord.Interaction) -> None:
         if not self.view.is_allowed(interaction):
             return
 

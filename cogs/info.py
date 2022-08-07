@@ -1,23 +1,23 @@
-from discord import app_commands, Embed
+from discord import app_commands, Embed, Interaction
 from discord.ext import commands
 
 from utils.config import get_config
 
-async def setup(bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Info(bot))
 
 class Info(commands.Cog):
     
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self.embed_color = int(bot.config["embed color"][-6:], 16)
 
     @commands.Cog.listener()
-    async def on_ready(self):
+    async def on_ready(self) -> None:
         self.bot.logger.info("Cog info ready!")
 
     @app_commands.command(name="github", description="Get the link to the GitHub repository")
-    async def template(self, interaction):
+    async def template(self, interaction: Interaction) -> None:
         """
         Send an embed with the link to the GitHub repository
         """
@@ -40,7 +40,7 @@ class Info(commands.Cog):
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="discord", description="Get the link to the Discord server")
-    async def discord(self, interaction):
+    async def discord(self, interaction: Interaction) -> None:
         """
         Send an embed with the link to the Discord server
         """

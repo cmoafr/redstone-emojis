@@ -1,6 +1,7 @@
 from datetime import datetime
 import logging
 import os
+from typing import Literal
 
 def get_log_filename() -> str:
     """
@@ -21,7 +22,7 @@ def get_logger(name: str) -> logging.Logger:
     """
 
     class LevelFilter(logging.Filter):
-        def filter(self, record):
+        def filter(self, record: logging.LogRecord) -> Literal[True]:
             if record.levelno == logging.WARNING:
                 record.levelname = "WARN "
             elif record.levelno == logging.CRITICAL:

@@ -9,21 +9,21 @@ from utils.config import get_config
 
 ALLOWED_MENTIONS = discord.AllowedMentions(everyone=False, users=True, roles=False)
 
-async def setup(bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Autoreply(bot))
 
 class Autoreply(commands.Cog):
     
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self.groups = get_config("autoreply")
 
     @commands.Cog.listener()
-    async def on_ready(self):
+    async def on_ready(self) -> None:
         self.bot.logger.info("Cog autoreply ready!")
 
     @commands.Cog.listener()
-    async def on_message(self, message: discord.Message):
+    async def on_message(self, message: discord.Message) -> None:
         author = message.author
         for name, group in self.groups.items():
 

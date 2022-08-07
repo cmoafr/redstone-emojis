@@ -9,7 +9,8 @@ from utils.logging import get_logger
 class Bot(commands.Bot):
 
     def __init__(self) -> None:
-        no_prefix = lambda bot, message: '<' if message.content.startswith('>') else '>'
+        def no_prefix(bot: commands.Bot, message: discord.Message) -> str:
+            return "<" if message.content.startswith(">") else ">"
         super().__init__(
             command_prefix=no_prefix,
             intents=discord.Intents.all()
@@ -33,7 +34,7 @@ class Bot(commands.Bot):
                 await self.load_extension(f"cogs.{filename[:-3]}")
 
         # Synchronize the commands.
-        async def sync():
+        async def sync() -> None:
             self.logger.debug("Synchronizing commands...")
             await self.wait_until_ready()
             for guild in self.guilds:

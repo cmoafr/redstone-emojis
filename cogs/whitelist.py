@@ -1,16 +1,19 @@
-from discord import app_commands, Embed, Interaction, DMChannel
+import discord
+from discord import app_commands
 from discord.ext import commands
+
+from typing import Dict
 
 from utils.config import get_config
 
-async def setup(bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Whitelist(bot))
 
 class Whitelist(commands.Cog):
 
     group = app_commands.Group(name="whitelist", description="Whitelist to the server", guild_ids=[460515591900495873])
     
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self.config = get_config("whitelist")
         self.pending = {type_:[] for type_ in self.config["types"]}
@@ -18,11 +21,11 @@ class Whitelist(commands.Cog):
         # TODO: Use a DB instead ?
 
     @commands.Cog.listener()
-    async def on_ready(self):
+    async def on_ready(self) -> None:
         self.bot.logger.info("Cog whitelist ready!")
 
     @commands.Cog.listener()
-    async def on_reaction_add(self, reaction, user):
+    async def on_reaction_add(self, reaction: discord.Reaction, user: discord.Member) -> None:
         if not user.bot and reaction.message.channel.id == self.config["validation chan"]:
             url = reaction.message.embeds[0].author.icon_url
             i = url.find("avatars/")
@@ -49,10 +52,10 @@ class Whitelist(commands.Cog):
     @group.command(name="apply", description="Form to apply for our server")
     @app_commands.describe(username="Your in game name (IGN)", type_="What are you applying for?", reason="A good reason for us to trust you")
     @app_commands.rename(type_="type")
-    async def apply(self, interaction: Interaction, username: str, type_: str, reason: str):
+    async def apply(self, interaction: discord.Interaction, username: str, type_: str, reason: str) -> None:
         # TODO: Convert to a proper form
         await interaction.response.defer(ephemeral=True)
-        if interaction.channel.type != DMChannel and interaction.channel_id != self.config["request chan"]:
+        if interaction.channel.type != discord.DMChannel and interaction.channel_id != self.config["request chan"]:
             await interaction.delete_original_message()
             return
 
@@ -86,7 +89,7 @@ class Whitelist(commands.Cog):
         await interaction.edit_original_message(content="An error occured: Validation channel not found.")
     
     @group.command(name="list", description="List all applications")
-    async def list(self, interaction: Interaction):
+    async def list(self, interaction: discord.Interaction) -> None:
         author = interaction.user
         if author.id != 283358054827819008: # TODO: Generalize
             await interaction.response.send_message("You are not allowed to do that.", ephemeral=True)
@@ -107,25 +110,25 @@ class Whitelist(commands.Cog):
 
 class Application:
 
-    def __init__(self, interaction, id_, username, type_, reason):
+    def __init__(self, interaction: discord.Interaction, id_: int, username: str, type_: str, reason: str) -> None:
         self.interaction = interaction
         self.id = id_
         self.username = username
         self.type = type_
         self.reason = reason
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, str]:
         return {
             "username": self.username,
             "type": self.type,
             "reason": self.reason
         }
 
-    def to_embed(self, bot, types):
+    def to_embed(self, bot: commands.Bot, types: Dict[str, int]) -> discord.Embed:
         emoji = str(bot.get_emoji(types[self.type]))
         author = self.interaction.user
         
-        embed = Embed(
+        embed = discord.Embed(
             title=emoji + " " + self.username,
             description=self.reason
         )
@@ -137,5 +140,5 @@ class Application:
         return embed
 
     @property
-    def raw_command(self):
+    def raw_command(self) -> str:
         return f"/whitelist username:{self.username} type:{self.type} reason:{self.reason} "

@@ -1,7 +1,10 @@
 import json
 import os
+from typing import Any, Dict, List, Union
 
-def get_config(name="bot", with_default=True):
+Config = Union[List[Any], Dict[str, Any]]
+
+def get_config(name: str = "bot", with_default: bool = True) -> Config:
     """
     Returns the config for the given name.
     """
@@ -22,7 +25,7 @@ def get_config(name="bot", with_default=True):
 
     return default | config
 
-def get_default_config(name="bot"):
+def get_default_config(name: str = "bot") -> Config:
     """
     Returns the default config for the given name.
     """
@@ -33,7 +36,7 @@ def get_default_config(name="bot"):
             return json.load(f)
     return dict()
 
-def expand_config_file(name="bot"):
+def expand_config_file(name: str = "bot") -> None:
     """
     Adds the missing default configurations to the config file.
     """
