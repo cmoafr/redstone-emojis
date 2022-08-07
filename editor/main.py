@@ -1,9 +1,8 @@
 import discord
 
-from io import BytesIO
-
 from editor.base import BaseView, NONE
 from editor.search import Search
+from editor.secondary import SecondaryView
 
 class MainView(BaseView):
     def __init__(self, *args):
@@ -11,27 +10,33 @@ class MainView(BaseView):
         self.update_buttons()
 
     def update_buttons(self):
-        self.done.disabled = not self.grid
+        self.place.emoji = self.bot.get_emoji(self.blocks[self.block])
 
-    @discord.ui.button(label='Undo', style=discord.ButtonStyle.red, row=0, disabled=True)
-    async def undo(self, interaction, button):
-        if self.is_allowed(interaction):
-            pass # TODO
-        self.update_buttons()
+    @discord.ui.button(label='Air', style=discord.ButtonStyle.blurple, row=0)
+    async def air(self, interaction, button):
+        if self.is_allowed(interaction) and (self.x, self.y) in self.grid:
+            del self.grid[(self.x, self.y)]
         await self.send(interaction)
 
-    @discord.ui.button(emoji="\u2b06", style=discord.ButtonStyle.blurple, row=0)
+    @discord.ui.button(emoji='\u2b06', style=discord.ButtonStyle.blurple, row=0)
     async def up(self, interaction, button):
         if self.is_allowed(interaction):
             self.y -= 1
         await self.send(interaction)
 
-    @discord.ui.button(label='Redo', style=discord.ButtonStyle.green, row=0, disabled=True)
-    async def redo(self, interaction, button):
+    @discord.ui.button(label='Favs', style=discord.ButtonStyle.gray, row=0, disabled=True)
+    async def favorites(self, interaction, button):
         if self.is_allowed(interaction):
             pass # TODO
-        self.update_buttons()
         await self.send(interaction)
+
+    @discord.ui.button(emoji='\U0001f5c2', style=discord.ButtonStyle.gray, row=0)
+    async def menu(self, interaction, button):
+        if self.is_allowed(interaction):
+            secondary_view = SecondaryView(self)
+            await secondary_view.send(interaction)
+        else:
+            await self.send(interaction)
 
     @discord.ui.button(emoji='\u2b05', style=discord.ButtonStyle.blurple, row=1)
     async def left(self, interaction, button):
@@ -39,7 +44,7 @@ class MainView(BaseView):
             self.x -= 1
         await self.send(interaction)
 
-    @discord.ui.button(label='Place', style=discord.ButtonStyle.blurple, row=1)
+    @discord.ui.button(emoji='\u2611', style=discord.ButtonStyle.blurple, row=1) # Emoji is temporary
     async def place(self, interaction, button):
         if self.is_allowed(interaction):
             if self.block == NONE:
@@ -55,7 +60,13 @@ class MainView(BaseView):
             self.x += 1
         await self.send(interaction)
 
-    @discord.ui.button(label='Pick', style=discord.ButtonStyle.blurple, row=2)
+    @discord.ui.button(label='Undo', style=discord.ButtonStyle.red, row=1, disabled=True)
+    async def undo(self, interaction, button):
+        if self.is_allowed(interaction):
+            pass # TODO
+        await self.send(interaction)
+
+    @discord.ui.button(emoji='\U0001f50e', style=discord.ButtonStyle.gray, row=2)
     async def search(self, interaction, button):
         if self.is_allowed(interaction):
             await interaction.response.send_modal(Search(self))
@@ -68,26 +79,14 @@ class MainView(BaseView):
             self.y += 1
         await self.send(interaction)
 
-    @discord.ui.button(label='Done', style=discord.ButtonStyle.green, row=2, disabled=True)
-    async def done(self, interaction, button):
-        if not self.is_allowed(interaction):
-            await self.send(interaction)
-            return
-        
-        if not self.grid:
-            # Would generate an empty image, cancel
-            await interaction.response.defer()
-            return
+    @discord.ui.button(label='Last', style=discord.ButtonStyle.gray, row=2, disabled=True)
+    async def lastest_blocks(self, interaction, button):
+        if self.is_allowed(interaction):
+            pass # TODO
+        await self.send(interaction)
 
-        image = self.get_image(
-            render_distance=float("inf"), # Get the full image
-            border_size=0,
-            invert_size=0,
-            expand_cursor=False
-        )
-        with BytesIO() as image_bin:
-            image.save(image_bin, "PNG")
-            image_bin.seek(0)
-            file = discord.File(image_bin, filename="circuit.png")
-
-        await interaction.response.edit_message(content=None, view=None, attachments=[file])
+    @discord.ui.button(label='Redo', style=discord.ButtonStyle.green, row=2, disabled=True)
+    async def redo(self, interaction, button):
+        if self.is_allowed(interaction):
+            pass # TODO
+        await self.send(interaction)
