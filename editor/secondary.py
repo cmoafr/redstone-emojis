@@ -45,11 +45,9 @@ class SecondaryView(BaseView):
             pass # TODO 
         await self.send(interaction)
 
-    @discord.ui.button(label='\u200b', style=discord.ButtonStyle.gray, row=1, disabled=True)
-    async def none(self, interaction, button):
-        if self.is_allowed(interaction):
-            pass # TODO: Find utility and implement
-        await self.send(interaction)
+    @discord.ui.button(label='Help', style=discord.ButtonStyle.gray, row=1)
+    async def help(self, interaction, button):
+        await interaction.response.send_message(content=self.bot.config["editor help"], ephemeral=True)
 
     @discord.ui.button(label='Schem', style=discord.ButtonStyle.green, row=1, disabled=True)
     async def generate_schem(self, interaction, button):
@@ -57,7 +55,7 @@ class SecondaryView(BaseView):
             pass # TODO
         await self.send(interaction)
 
-    @discord.ui.button(label='Del', style=discord.ButtonStyle.red, row=2)
+    @discord.ui.button(label='Exit', style=discord.ButtonStyle.red, row=2)
     async def delete(self, interaction, button):
         if self.is_allowed(interaction) and self.shareability != Shareability.PRIVATE: # Cannot delete ephemeral messages
             await interaction.message.delete()
