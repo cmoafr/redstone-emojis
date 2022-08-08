@@ -26,6 +26,7 @@ class Search(discord.ui.Modal):
         # The block exists, change and return to main menu
         if block is None or block in self.view.blocks:
             self.view.block = block or self.view.block
+            self.view.update_buttons()
             await self.view.send(interaction)
             return
 

@@ -94,4 +94,5 @@ class SelectorView(BaseView):
         
         if self.dropdown.selected:
             self.main_view.block = self.dropdown.selected
+            self.view.update_buttons()
             await self.main_view.send(interaction)
