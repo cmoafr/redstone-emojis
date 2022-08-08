@@ -127,10 +127,13 @@ class BaseView(discord.ui.View):
             image_bin.seek(0)
             file = discord.File(image_bin, filename="circuit.png")
 
-        if interaction.command is None:
-            # This wasn't a command so we edit the message
-            # to prevent spamming the channel
-            await interaction.response.edit_message(content=None, view=self, attachments=[file])
-        else:
-            await interaction.response.send_message(view=self, file=file, ephemeral=self.shareability == Shareability.PRIVATE)
+        try:
+            if interaction.command is None:
+                # This wasn't a command so we edit the message
+                # to prevent spamming the channel
+                await interaction.response.edit_message(content=None, view=self, attachments=[file])
+            else:
+                await interaction.response.send_message(view=self, file=file, ephemeral=self.shareability == Shareability.PRIVATE)
+        except discord.NotFound:
+            self.bot.logger.warn("Unkown interaction " + str(interaction.id))
         await self.wait()
