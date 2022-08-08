@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 Config = Union[List[Any], Dict[str, Any]]
 
@@ -43,3 +43,15 @@ def expand_config_file(name: str = "bot") -> None:
 
     with open(f"config/{name}.json", "w") as config_file:
         json.dump(get_config(name), config_file, indent=4)
+
+def update_config_file(name: str = "bot", config: Optional[Config] = None) -> None:
+    """
+    Changes the config file for the given name.
+    """
+
+    if config is None:
+        return
+    os.makedirs("config", exist_ok=True)
+    filepath = f"config/{name}.json"
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(config, f)

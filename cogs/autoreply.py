@@ -1,11 +1,13 @@
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 from datetime import datetime, timedelta
 from random import random
 import re
+from typing import List
 
-from utils.config import get_config
+from utils.config import get_config, update_config_file
 
 ALLOWED_MENTIONS = discord.AllowedMentions(everyone=False, users=True, roles=False)
 
@@ -17,6 +19,7 @@ class Autoreply(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self.groups = get_config("autoreply")
+        self.optouts = get_config("optout")
 
     @commands.Cog.listener()
     async def on_ready(self) -> None:
@@ -26,6 +29,9 @@ class Autoreply(commands.Cog):
     async def on_message(self, message: discord.Message) -> None:
         author = message.author
         for name, group in self.groups.items():
+
+            if name in self.optouts and author.id in self.optouts.get(name, []):
+                continue
 
             m = re.search(group["pattern"].format(
                 message=message,
@@ -61,7 +67,6 @@ class Autoreply(commands.Cog):
                             conditions &= author.joined_at >= datetime.now() + timedelta(seconds=value)
                         case "probability":
                             conditions &= random() <= value
-                    print(condition, conditions)
                 except Exception as e:
                     pass
             
@@ -90,3 +95,30 @@ class Autoreply(commands.Cog):
 
             if group.get("break", False):
                 return
+
+    @app_commands.command(name="optout", description="Opt out of autoreplies")
+    @app_commands.describe(name="Which autoreply to optout from.")
+    async def optout(self, interaction: discord.Interaction, name: str) -> None:
+        if name not in self.groups:
+            await interaction.response.send_message(f"\"{name}\" does not exist.", ephemeral=True)
+            return
+        if not self.groups[name].get("optout", False):
+            await interaction.response.send_message(f"You cannot opt out from \"{name}\".", ephemeral=True)
+            return
+        if interaction.user.id in self.optouts.get(name, []):
+            await interaction.response.send_message(f"You are already opted out from \"{name}\".", ephemeral=True)
+            return
+
+        if not name in self.optouts:
+            self.optouts[name] = []
+        self.optouts[name].append(interaction.user.id)
+        update_config_file("optout", self.optouts) # TODO: Move to DB instead ?
+        await interaction.response.send_message(f"You have successfully been optout from \"{name}\".", ephemeral=True)
+
+    @optout.autocomplete("name")
+    async def optout_autocomplete(self, interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
+        return [
+            app_commands.Choice(name=name, value=name)
+            for name in self.groups
+            if "optout" in self.groups[name]
+        ]
