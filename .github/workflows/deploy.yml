@@ -1,10 +1,11 @@
-name: updater
+name: Deploy
 on:
   push:
     branches:
-      - master
+      - main
 jobs:
-  update:
+  deploy-tr:
+    name: Deploy to Topred
     runs-on: ubuntu-latest
     steps:
       - name: Install SSH Key
