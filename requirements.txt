@@ -7,6 +7,7 @@ async-timeout==4.0.2
 attrs==21.4.0
 certifi==2021.10.8
 charset-normalizer==2.0.12
+discord.py==2.0.0
 frozenlist==1.3.0
 idna==3.3
 multidict==6.0.2
@@ -14,5 +15,3 @@ Pillow==9.1.0
 requests==2.27.1
 urllib3==1.26.9
 yarl==1.7.2
-
-git+https://github.com/Rapptz/discord.py@b7e25645dc68bbb828bf1ede711d098c6b183237
