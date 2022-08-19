@@ -1,5 +1,5 @@
 # How to install:
-# pip install -U --upgrade -r requirements.txt
+# pip install --upgrade -r requirements.txt
 
 aiohttp==3.8.1
 aiosignal==1.2.0
