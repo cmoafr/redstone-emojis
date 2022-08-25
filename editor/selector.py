@@ -85,7 +85,7 @@ class SelectorView(BaseView):
         # TODO: Refacto this
         from editor.search import Search
 
-        await interaction.response.send_modal(Search(self))
+        await interaction.response.send_modal(Search(self.main_view))
         
     @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green, row=1, disabled=True)
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
@@ -94,5 +94,5 @@ class SelectorView(BaseView):
         
         if self.dropdown.selected:
             self.main_view.block = self.dropdown.selected
-            self.view.update_buttons()
+            self.main_view.update_buttons()
             await self.main_view.send(interaction)
