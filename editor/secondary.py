@@ -107,7 +107,7 @@ class SecondaryView(BaseView):
         image = self.get_image(
             render_distance=float("inf"), # Get the full image
             border_size=0,
-            invert_size=0,
+            selected_border_size=0,
             expand_cursor=False
         )
         with BytesIO() as image_bin:
