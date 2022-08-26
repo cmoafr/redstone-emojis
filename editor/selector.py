@@ -65,11 +65,7 @@ class SelectorView(BaseView):
         self.search_block = search_block
 
         options = [
-            discord.SelectOption(
-                label=option,
-                value=option,
-                emoji=self.bot.get_emoji(self.main_view.blocks[option])
-            )
+            discord.SelectOption(label=option, value=option)
             for option in get_best_matches(self.main_view.blocks, search_block, 25)
         ]
 
@@ -85,7 +81,7 @@ class SelectorView(BaseView):
         # TODO: Refacto this
         from editor.search import Search
 
-        await interaction.response.send_modal(Search(self))
+        await interaction.response.send_modal(Search(self.main_view))
         
     @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green, row=1, disabled=True)
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
@@ -94,5 +90,5 @@ class SelectorView(BaseView):
         
         if self.dropdown.selected:
             self.main_view.block = self.dropdown.selected
-            self.view.update_buttons()
+            self.main_view.update_buttons()
             await self.main_view.send(interaction)

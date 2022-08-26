@@ -3,16 +3,16 @@ from discord.ext import commands
 
 from functools import lru_cache
 from io import BytesIO
+import os
 from PIL import Image, ImageOps
 import requests
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 
-from utils.config import get_config
 from utils.shareability import Shareability
 
 BLOCK_SIZE = 64
 BORDER_SIZE = 1
-INVERT_SIZE = 8
+SELECTED_BORDER_SIZE = 8
 
 BACKGROUND_COLOR = (54, 57, 63, 0)
 BORDER_COLOR = (255, 255, 255, 128)
@@ -26,10 +26,11 @@ class BaseView(discord.ui.View):
         self.bot = bot
         self.shareability = shareability
         self.user_id = user_id
-        self.blocks = get_config("emojis", with_default=False)
-        self.block = DEFAULT
-        self.x, self.y = 0, 0
-        self.grid = {} # (x, y) -> Block (emoji id)
+        self.blocks = [os.path.splitext(filename)[0] for filename in os.listdir("images")]
+        self.block: str = DEFAULT
+        self.x: int = 0
+        self.y: int = 0
+        self.grid: Dict[Tuple[int, int], str] = {} # (x, y) -> Block name
         super().__init__()
 
     def is_allowed(self, interaction: discord.Interaction) -> bool:
@@ -37,21 +38,20 @@ class BaseView(discord.ui.View):
             return True # Bypass Shareability
         return self.shareability != Shareability.VISIBLE or interaction.user.id == self.user_id
 
-    @lru_cache(maxsize=64)
-    def get_emoji(self, block: Optional[str] = None, size: int = 16) -> Image.Image:
+    @lru_cache(maxsize=32)
+    def get_block(self, block: Optional[str] = None, size: int = 16) -> Image.Image:
         if block is None:
             block = self.block
-        emoji = self.bot.get_emoji(block)
 
-        if emoji is None:
-            self.bot.logger.warning(f"No emoji found with id {block}")
+        path = "images/"+block+".png"
+        if not os.path.exists(path):
+            self.bot.logger.warning(f"No emoji found with name {block}")
             return Image.new("RGBA", (size, size), BACKGROUND_COLOR)
         
-        r = requests.get(str(emoji.url), stream=True)
-        return Image.open(r.raw).convert("RGBA").resize((size, size), resample=0)
+        return Image.open(path).convert("RGBA").resize((size, size), resample=0)
 
-    #@lru_cache(maxsize=64)
-    def process_emoji(self, image: Image.Image, grid_color: Tuple[int, int, int, int], grid_width: int = 1, invert_border_size: int = 0) -> Image.Image:
+    #@lru_cache(maxsize=32)
+    def process_block(self, image: Image.Image, grid_color: Tuple[int, int, int, int], grid_width: int = 1, selected_border_size: int = 0) -> Image.Image:
 
         # Create border
         if grid_width:
@@ -62,14 +62,14 @@ class BaseView(discord.ui.View):
             image = bg
 
         # Invert the border
-        if invert_border_size:
-            cropped = image.crop((invert_border_size, invert_border_size, image.width - invert_border_size, image.height - invert_border_size))
+        if selected_border_size:
+            cropped = image.crop((selected_border_size, selected_border_size, image.width - selected_border_size, image.height - selected_border_size))
             image = ImageOps.invert(image.convert("RGB")).convert("RGBA")
-            image.paste(cropped, (invert_border_size, invert_border_size))
+            image.paste(cropped, (selected_border_size, selected_border_size))
 
         return image
 
-    def get_image(self, render_distance: int = RENDER_DISTANCE, block_size: int = BLOCK_SIZE, border_size: int = BORDER_SIZE, invert_size: int = INVERT_SIZE, expand_cursor: bool = True) -> Image.Image:
+    def get_image(self, render_distance: int = RENDER_DISTANCE, block_size: int = BLOCK_SIZE, border_size: int = BORDER_SIZE, selected_border_size: int = SELECTED_BORDER_SIZE, expand_cursor: bool = True) -> Image.Image:
 
         if self.grid:
             # Get the grid bounds
@@ -107,16 +107,25 @@ class BaseView(discord.ui.View):
         for x in range(min_x, max_x):
             for y in range(min_y, max_y):
 
-                block = self.grid.get((x, y), self.blocks[NONE])
-                invert = x == self.x and y == self.y
-                emoji = self.get_emoji(block, block_size)
-                emoji = self.process_emoji(emoji, BORDER_COLOR, (not invert)*border_size, invert*invert_size)
+                name = self.grid.get((x, y), NONE)
+                selected = x == self.x and y == self.y
+                block = self.get_block(name, block_size)
+                formatted = self.process_block(block, BORDER_COLOR, border_size, 0)
 
                 image.paste(
-                    emoji, (
+                    formatted, (
                     (x - min_x) * block_size,
                     (y - min_y) * block_size
                 ))
+
+                if selected:
+                    block = self.get_block(self.block, block_size)
+                    cropped = block.crop((selected_border_size, selected_border_size, block_size - selected_border_size, block_size - selected_border_size))
+                    image.paste(
+                        cropped, (
+                        (x - min_x) * block_size + selected_border_size,
+                        (y - min_y) * block_size + selected_border_size
+                    ))
         
         return image
     

@@ -10,7 +10,7 @@ class MainView(BaseView):
         self.update_buttons()
 
     def update_buttons(self) -> None:
-        self.place.emoji = self.bot.get_emoji(self.blocks[self.block])
+        pass # No buttons to update
 
     @discord.ui.button(label="Air", style=discord.ButtonStyle.blurple, row=0)
     async def air(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
@@ -44,13 +44,13 @@ class MainView(BaseView):
             self.x -= 1
         await self.send(interaction)
 
-    @discord.ui.button(emoji="\u2611", style=discord.ButtonStyle.blurple, row=1) # Emoji is temporary
+    @discord.ui.button(label="Place", style=discord.ButtonStyle.blurple, row=1)
     async def place(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         if self.is_allowed(interaction):
             if self.block == NONE:
                 del self.grid[(self.x, self.y)]
             else:
-                self.grid[(self.x, self.y)] = self.blocks[self.block]
+                self.grid[(self.x, self.y)] = self.block
             self.update_buttons()
         await self.send(interaction)
 
