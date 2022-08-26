@@ -11,7 +11,7 @@ async def setup(bot: commands.Bot) -> None:
 
 class Whitelist(commands.Cog):
 
-    group = app_commands.Group(name="whitelist", description="Whitelist to the server", guild_ids=[460515591900495873])
+    group = app_commands.Group(name="whitelist", description="Whitelist to the server", guild_ids=[622199790398341150])
     
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -56,11 +56,12 @@ class Whitelist(commands.Cog):
         # TODO: Convert to a proper form
         await interaction.response.defer(ephemeral=True)
         if interaction.channel.type != discord.DMChannel and interaction.channel_id != self.config["request chan"]:
-            await interaction.delete_original_message()
+            await interaction.edit_original_message(content=f"Please make your request in <#{self.config['request chan']}>")
             return
 
         if type_ not in self.config["types"]:
             await interaction.edit_original_message(content=f"Invalid type \"{type_}\". Options are:\n" + ", ".join(self.config["types"]))
+            return
 
         id_ = interaction.user.id
         for app in self.pending[type_]:
