@@ -18,8 +18,20 @@ class Editor(commands.Cog):
         self.bot.logger.info("Cog editor ready!")
 
     @app_commands.command(name="editor", description="Visual editor to create circuits")
-    @app_commands.describe(shareability="Shareability with others.\nValue 'Public' will allow anyone to interact with you session and is highly discouraged.")
-    @app_commands.choices(shareability=[app_commands.Choice(name=s.value, value=s.value) for s in Shareability.__members__.values()])
-    async def editor(self, interaction: discord.Interaction, shareability: str = Shareability.PRIVATE.value) -> None:
+    @app_commands.describe(
+        shareability="Shareability with others.\n"
+        "Value 'Public' will allow anyone to interact with you session and is highly discouraged."
+    )
+    @app_commands.choices(
+        shareability=[
+            app_commands.Choice(name=s.value, value=s.value)
+            for s in Shareability.__members__.values()
+        ]
+    )
+    async def editor(
+            self,
+            interaction: discord.Interaction,
+            shareability: str = Shareability.PRIVATE.value
+        ) -> None:
         view = MainView(self.bot, Shareability(shareability), interaction.user.id)
         await view.send(interaction)

@@ -39,7 +39,10 @@ class Roles(commands.Cog):
         if added is None:
             return
         if added:
-            await interaction.response.send_message(f"Added roles: {self._roles_to_str(added)}", ephemeral=True)
+            await interaction.response.send_message(
+                f"Added roles: {self._roles_to_str(added)}",
+                ephemeral=True
+            )
         else:
             await interaction.response.send_message("No roles added.", ephemeral=True)
     
@@ -50,18 +53,31 @@ class Roles(commands.Cog):
         if removed is None:
             return
         if removed:
-            await interaction.response.send_message(f"Removed roles: {self._roles_to_str(removed)}", ephemeral=True)
+            await interaction.response.send_message(
+                f"Removed roles: {self._roles_to_str(removed)}",
+                ephemeral=True
+            )
         else:
             await interaction.response.send_message("No roles removed.", ephemeral=True)
 
 
 
-    def available_roles(self, guild: discord.Guild, wanted: List[str], negate: bool = False) -> List[str]:
+    def available_roles(
+            self,
+            guild: discord.Guild,
+            wanted: List[str],
+            negate: bool = False
+        ) -> List[str]:
         ids = get_config("roles").get(str(guild.id), None)
         keep = lambda role: role.id in ids and (negate ^ (role.name.lower() in wanted))
         return [role.name.lower() for role in guild.roles if keep(role)]
 
-    async def process_roles(self, interaction: discord.Interaction, roles: str, action: Coroutine[Any, Any, None]) -> List[discord.Role]:
+    async def process_roles(
+            self,
+            interaction: discord.Interaction,
+            roles: str,
+            action: Coroutine[Any, Any, None]
+        ) -> List[discord.Role]:
         L = [] # List of roles added/removed
         wanted = sorted(list(set(role.strip().lower() for role in roles.split(","))))
 
@@ -78,7 +94,10 @@ class Roles(commands.Cog):
                     await action(role)
                     L.append(role)
             except discord.Forbidden:
-                await interaction.response.send_message("It appears I am not strong enough. Ask an admin to give me permission and try again later.")
+                await interaction.response.send_message(
+                    "It appears I am not strong enough. "
+                    "Ask an admin to give me permission and try again later."
+                )
                 return None
             except discord.HTTPException:
                 pass
@@ -88,7 +107,11 @@ class Roles(commands.Cog):
 
     @add.autocomplete("roles")
     @remove.autocomplete("roles")
-    async def roles_autocomplete(self, interaction: discord.Interaction, current: str) -> List[app_commands.Choice]:
+    async def roles_autocomplete(
+            self,
+            interaction: discord.Interaction,
+            current: str
+        ) -> List[app_commands.Choice]:
         wanted = current.lower().split(", ")
         availables = sorted(self.available_roles(interaction.guild, wanted, negate=True))
         

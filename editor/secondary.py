@@ -21,7 +21,11 @@ class SecondaryView(BaseView):
         self.done.disabled = not self.grid
 
     @discord.ui.button(emoji="\u23eb", style=discord.ButtonStyle.blurple, row=0, disabled=True)
-    async def layer_above(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+    async def layer_above(
+            self,
+            interaction: discord.Interaction,
+            button: discord.ui.Button
+        ) -> None:
         if self.is_allowed(interaction):
             pass # TODO
         await self.send(interaction)
@@ -40,30 +44,51 @@ class SecondaryView(BaseView):
             await self.send(interaction)
 
     @discord.ui.button(emoji="\u23ec", style=discord.ButtonStyle.blurple, row=1, disabled=True)
-    async def layer_below(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+    async def layer_below(
+            self,
+            interaction: discord.Interaction,
+            button: discord.ui.Button
+        ) -> None:
         if self.is_allowed(interaction):
             pass # TODO 
         await self.send(interaction)
 
     @discord.ui.button(label="Help", style=discord.ButtonStyle.gray, row=1)
     async def help(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await interaction.response.send_message(content=self.bot.config["editor help"], ephemeral=True)
+        await interaction.response.send_message(
+            content=self.bot.config["editor help"],
+            ephemeral=True
+        )
 
     @discord.ui.button(label="Schem", style=discord.ButtonStyle.green, row=1, disabled=True)
-    async def generate_schem(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+    async def generate_schem(
+            self,
+            interaction: discord.Interaction,
+            button: discord.ui.Button
+        ) -> None:
         if self.is_allowed(interaction):
             pass # TODO
         await self.send(interaction)
 
     @discord.ui.button(label="Exit", style=discord.ButtonStyle.red, row=2)
     async def delete(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        if self.is_allowed(interaction) and self.shareability != Shareability.PRIVATE: # Cannot delete ephemeral messages
+        if self.is_allowed(interaction) and self.shareability != Shareability.PRIVATE:
             await interaction.message.delete()
         else:
+            # Cannot delete ephemeral messages
             await self.send(interaction)
 
-    @discord.ui.button(emoji="\U0001f441", style=discord.ButtonStyle.blurple, row=2, disabled=True)
-    async def generate_preview(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+    @discord.ui.button(
+        emoji="\U0001f441",
+        style=discord.ButtonStyle.blurple,
+        row=2,
+        disabled=True
+    )
+    async def generate_preview(
+            self,
+            interaction: discord.Interaction,
+            button: discord.ui.Button
+        ) -> None:
         if self.is_allowed(interaction):
             pass # TODO
         await self.send(interaction)

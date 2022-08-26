@@ -34,7 +34,8 @@ class BaseView(discord.ui.View):
         super().__init__()
 
     def is_allowed(self, interaction: discord.Interaction) -> bool:
-        if interaction.user.guild_permissions.administrator or interaction.user.id in self.bot.config["admin ids"]:
+        if interaction.user.guild_permissions.administrator \
+                or interaction.user.id in self.bot.config["admin ids"]:
             return True # Bypass Shareability
         return self.shareability != Shareability.VISIBLE or interaction.user.id == self.user_id
 
@@ -51,7 +52,13 @@ class BaseView(discord.ui.View):
         return Image.open(path).convert("RGBA").resize((size, size), resample=0)
 
     #@lru_cache(maxsize=32)
-    def process_block(self, image: Image.Image, grid_color: Tuple[int, int, int, int], grid_width: int = 1, selected_border_size: int = 0) -> Image.Image:
+    def process_block(
+            self,
+            image: Image.Image,
+            grid_color: Tuple[int, int, int, int],
+            grid_width: int = 1,
+            selected_border_size: int = 0
+        ) -> Image.Image:
 
         # Create border
         if grid_width:
@@ -63,13 +70,25 @@ class BaseView(discord.ui.View):
 
         # Invert the border
         if selected_border_size:
-            cropped = image.crop((selected_border_size, selected_border_size, image.width - selected_border_size, image.height - selected_border_size))
+            cropped = image.crop((
+                selected_border_size,
+                selected_border_size,
+                image.width - selected_border_size,
+                image.height - selected_border_size
+            ))
             image = ImageOps.invert(image.convert("RGB")).convert("RGBA")
             image.paste(cropped, (selected_border_size, selected_border_size))
 
         return image
 
-    def get_image(self, render_distance: int = RENDER_DISTANCE, block_size: int = BLOCK_SIZE, border_size: int = BORDER_SIZE, selected_border_size: int = SELECTED_BORDER_SIZE, expand_cursor: bool = True) -> Image.Image:
+    def get_image(
+            self,
+            render_distance: int = RENDER_DISTANCE,
+            block_size: int = BLOCK_SIZE,
+            border_size: int = BORDER_SIZE,
+            selected_border_size: int = SELECTED_BORDER_SIZE,
+            expand_cursor: bool = True
+        ) -> Image.Image:
 
         if self.grid:
             # Get the grid bounds
@@ -120,7 +139,12 @@ class BaseView(discord.ui.View):
 
                 if selected:
                     block = self.get_block(self.block, block_size)
-                    cropped = block.crop((selected_border_size, selected_border_size, block_size - selected_border_size, block_size - selected_border_size))
+                    cropped = block.crop((
+                        selected_border_size,
+                        selected_border_size,
+                        block_size - selected_border_size,
+                        block_size - selected_border_size
+                    ))
                     image.paste(
                         cropped, (
                         (x - min_x) * block_size + selected_border_size,
@@ -140,9 +164,17 @@ class BaseView(discord.ui.View):
             if interaction.command is None:
                 # This wasn't a command so we edit the message
                 # to prevent spamming the channel
-                await interaction.response.edit_message(content=None, view=self, attachments=[file])
+                await interaction.response.edit_message(
+                    content=None,
+                    view=self,
+                    attachments=[file]
+                )
             else:
-                await interaction.response.send_message(view=self, file=file, ephemeral=self.shareability == Shareability.PRIVATE)
+                await interaction.response.send_message(
+                    view=self,
+                    file=file,
+                    ephemeral=self.shareability == Shareability.PRIVATE
+                )
         except discord.NotFound:
             self.bot.logger.warn("Unkown interaction " + str(interaction.id))
         await self.wait()

@@ -5,7 +5,11 @@ from typing import Dict, Iterable, List, Optional
 
 from editor.base import BaseView
 
-def get_scores(options: Iterable[str], selected: str, exact_matches_increment: float = 1) -> Dict[str, float]:
+def get_scores(
+        options: Iterable[str],
+        selected: str,
+        exact_matches_increment: float = 1
+    ) -> Dict[str, float]:
     """
     Calculates the scores for each option using the builtin SequenceMatcher.
     """
@@ -18,7 +22,8 @@ def get_scores(options: Iterable[str], selected: str, exact_matches_increment: f
         exact = option.lower().split(" ")
         for word in selected.lower().split(" "):
             if word in exact:
-                score += exact_matches_increment # The more exact words in common, the higher it should be
+                # The more exact words in common, the higher it should be
+                score += exact_matches_increment
         scores[option] = score
 
     return scores
@@ -34,7 +39,13 @@ def get_best_matches(options: Iterable[str], text: str, count: Optional[int] = N
 
 
 class SelectorDropdown(discord.ui.Select):
-    def __init__(self, main_view: BaseView, options: Iterable[discord.SelectOption], search_block: str, selected: Optional[str] = None) -> None:
+    def __init__(
+            self,
+            main_view: BaseView,
+            options: Iterable[discord.SelectOption],
+            search_block: str,
+            selected: Optional[str] = None
+        ) -> None:
         super().__init__(options=options, min_values=1, max_values=1)
         self.main_view = main_view
         self.search_block = search_block
@@ -51,7 +62,8 @@ class SelectorDropdown(discord.ui.Select):
         view.confirm.disabled = False
         
         await interaction.response.edit_message(
-            content=f"Here are the closest matches to `{self.search_block}`.\nPlease confirm you select `{selected}`.",
+            content=f"Here are the closest matches to `{self.search_block}`.\n"
+                "Please confirm you select `{selected}`.",
             view=view,
             attachments=[]
         )
@@ -59,7 +71,12 @@ class SelectorDropdown(discord.ui.Select):
 
 
 class SelectorView(BaseView):
-    def __init__(self, main_view: BaseView, search_block: str, selected: Optional[str] = None) -> None:
+    def __init__(
+            self,
+            main_view: BaseView,
+            search_block: str,
+            selected: Optional[str] = None
+        ) -> None:
         super().__init__(main_view.bot, main_view.shareability, main_view.user_id)
         self.main_view = main_view
         self.search_block = search_block

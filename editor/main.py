@@ -25,7 +25,11 @@ class MainView(BaseView):
         await self.send(interaction)
 
     @discord.ui.button(label="Favs", style=discord.ButtonStyle.gray, row=0, disabled=True)
-    async def favorites(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+    async def favorites(
+            self,
+            interaction: discord.Interaction,
+            button: discord.ui.Button
+        ) -> None:
         if self.is_allowed(interaction):
             pass # TODO
         await self.send(interaction)
@@ -80,7 +84,11 @@ class MainView(BaseView):
         await self.send(interaction)
 
     @discord.ui.button(label="Last", style=discord.ButtonStyle.gray, row=2, disabled=True)
-    async def lastest_blocks(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+    async def lastest_blocks(
+            self,
+            interaction: discord.Interaction,
+            button: discord.ui.Button
+        ) -> None:
         if self.is_allowed(interaction):
             pass # TODO
         await self.send(interaction)

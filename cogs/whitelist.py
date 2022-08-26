@@ -11,7 +11,11 @@ async def setup(bot: commands.Bot) -> None:
 
 class Whitelist(commands.Cog):
 
-    group = app_commands.Group(name="whitelist", description="Whitelist to the server", guild_ids=[622199790398341150])
+    group = app_commands.Group(
+        name="whitelist",
+        description="Whitelist to the server",
+        guild_ids=[622199790398341150]
+    )
     
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -36,12 +40,18 @@ class Whitelist(commands.Cog):
                 for app in self.pending[type_]:
                     if app.id == id_:
                         if reaction.emoji == self.config["accept"]:
-                            await user.send("Your request to join the survival has been accepted!")
+                            await user.send(
+                                "Your request to join the survival has been accepted!"
+                            )
                             self.pending[type_].remove(app)
                             self.accepted[type_].append(app)
                             return
                         if reaction.emoji == self.config["reject"]:
-                            await user.send(f"Your request to join the survival has been denied. You may send a new one if you want. Here is your original:\n`"+app.raw_command+"`")
+                            await user.send(
+                                f"Your request to join the survival has been denied. "
+                                "You may send a new one if you want. Here is your original:\n"
+                                f"`{app.raw_command}`"
+                            )
                             self.pending[type_].remove(app)
                             return
             await reaction.remove(user)
@@ -50,27 +60,48 @@ class Whitelist(commands.Cog):
 
 
     @group.command(name="apply", description="Form to apply for our server")
-    @app_commands.describe(username="Your in game name (IGN)", type_="What are you applying for?", reason="A good reason for us to trust you")
+    @app_commands.describe(
+        username="Your in game name (IGN)",
+        type_="What are you applying for?",
+        reason="A good reason for us to trust you"
+    )
     @app_commands.rename(type_="type")
-    async def apply(self, interaction: discord.Interaction, username: str, type_: str, reason: str) -> None:
+    async def apply(
+            self,
+            interaction: discord.Interaction,
+            username: str,
+            type_: str,
+            reason: str
+        ) -> None:
         # TODO: Convert to a proper form
         await interaction.response.defer(ephemeral=True)
-        if interaction.channel.type != discord.DMChannel and interaction.channel_id != self.config["request chan"]:
-            await interaction.edit_original_message(content=f"Please make your request in <#{self.config['request chan']}>")
+        if interaction.channel.type != discord.DMChannel \
+                and interaction.channel_id != self.config["request chan"]:
+            await interaction.edit_original_message(
+                content=f"Please make your request in <#{self.config['request chan']}>"
+            )
             return
 
         if type_ not in self.config["types"]:
-            await interaction.edit_original_message(content=f"Invalid type \"{type_}\". Options are:\n" + ", ".join(self.config["types"]))
+            await interaction.edit_original_message(
+                content=f"Invalid type \"{type_}\". Options are:\n"
+                + ", ".join(self.config["types"])
+            )
             return
 
         id_ = interaction.user.id
         for app in self.pending[type_]:
             if app.id == id_:
-                await interaction.edit_original_message(content="Your request is already being reviewed. Please wait for it to be reviewed. This make take some time.")
+                await interaction.edit_original_message(
+                    content="Your request is already being reviewed. "
+                    "Please wait for it to be reviewed. This make take some time."
+                )
                 return
         for app in self.accepted[type_]:
             if app.id == id_:
-                await interaction.edit_original_message(content="You are already whitelisted and can join right away.")
+                await interaction.edit_original_message(
+                    content="You are already whitelisted and can join right away."
+                )
                 return
         
         chan = self.bot.get_channel(self.config["validation chan"])
@@ -82,18 +113,25 @@ class Whitelist(commands.Cog):
                 await message.add_reaction(self.config["accept"])
                 await message.add_reaction(self.config["reject"])
                 self.pending[type_].append(application)
-                await interaction.edit_original_message(content="Your application has been sent! Please wait for a response.")
+                await interaction.edit_original_message(
+                    content="Your application has been sent! Please wait for a response."
+                )
                 return
             except Exception as e:
                 await interaction.edit_original_message(content="An error occured: " + str(e))
                 raise e
-        await interaction.edit_original_message(content="An error occured: Validation channel not found.")
+        await interaction.edit_original_message(
+            content="An error occured: Validation channel not found."
+        )
     
     @group.command(name="list", description="List all applications")
     async def list(self, interaction: discord.Interaction) -> None:
         author = interaction.user
         if author.id != 283358054827819008: # TODO: Generalize
-            await interaction.response.send_message("You are not allowed to do that.", ephemeral=True)
+            await interaction.response.send_message(
+                "You are not allowed to do that.",
+                ephemeral=True
+            )
             return
         
         for type_ in self.config["types"]:
@@ -111,7 +149,14 @@ class Whitelist(commands.Cog):
 
 class Application:
 
-    def __init__(self, interaction: discord.Interaction, id_: int, username: str, type_: str, reason: str) -> None:
+    def __init__(
+            self,
+            interaction: discord.Interaction,
+            id_: int,
+            username: str,
+            type_: str,
+            reason: str
+        ) -> None:
         self.interaction = interaction
         self.id = id_
         self.username = username

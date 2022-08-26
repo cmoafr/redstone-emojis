@@ -32,7 +32,9 @@ class Info(commands.Cog):
             url="https://github.com",
             icon_url="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
         )
-        embed.set_thumbnail(url="https://cdn.discordapp.com/app-icons/710126213695537203/1a83adcc9083303c060b2596fd5f669f.png")
+        embed.set_thumbnail(
+            url="https://cdn.discordapp.com/app-icons/710126213695537203/1a83adcc9083303c060b2596fd5f669f.png"
+        )
         embed.set_footer(
             text="Made with ❤️ by cmoa",
             icon_url="https://avatars.githubusercontent.com/u/43421239"

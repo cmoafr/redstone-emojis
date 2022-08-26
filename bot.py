@@ -17,7 +17,10 @@ class Bot(commands.Bot):
         )
 
         if not os.path.exists("config/bot.json"):
-            raise FileNotFoundError("The bot has no config file. Please copy the default template and change the token.")
+            raise FileNotFoundError(
+                "The bot has no config file. "
+                "Please copy the default template and change the token."
+            )
         self.config = get_config()
 
     async def on_ready(self) -> None:
@@ -41,7 +44,9 @@ class Bot(commands.Bot):
                 try:
                     await self.tree.sync(guild=guild)
                 except discord.Forbidden:
-                    self.logger.warning(f"Bot is missing permissions to sync commands in {guild.name}")
+                    self.logger.warning(
+                        f"Bot is missing permissions to sync commands in {guild.name}"
+                    )
             await self.tree.sync()
             self.logger.debug("Commands synchronized.")
         self.loop.create_task(sync())
