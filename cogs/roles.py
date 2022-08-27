@@ -80,7 +80,6 @@ class Roles(commands.Cog):
         ) -> List[discord.Role]:
         L = [] # List of roles added/removed
         wanted = sorted(list(set(role.strip().lower() for role in roles.split(","))))
-        allowed = self.available_roles(interaction.guild, wanted)
 
         def get_role(name: str) -> discord.Role:
             for role in interaction.guild.roles:
@@ -88,7 +87,7 @@ class Roles(commands.Cog):
                     return role
             return None
 
-        for name in allowed:
+        for name in wanted:
             try:
                 role = get_role(name)
                 if role is not None:
