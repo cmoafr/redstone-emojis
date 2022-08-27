@@ -34,6 +34,8 @@ class BaseView(discord.ui.View):
         super().__init__()
 
     def is_allowed(self, interaction: discord.Interaction) -> bool:
+        if interaction.guild is None:
+            return True # In DMs
         if interaction.user.guild_permissions.administrator \
                 or interaction.user.id in self.bot.config["admin ids"]:
             return True # Bypass Shareability

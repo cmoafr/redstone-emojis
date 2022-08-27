@@ -24,6 +24,9 @@ class Roles(commands.Cog):
 
     @roles.command(name="list", description="List all possibles roles")
     async def list(self, interaction: discord.Interaction) -> None:
+        if interaction.guild is None:
+            await interaction.response.send_message("This command cannot be used in DMs.")
+            return
         # Reloading each time to prevent having to reload just to change the roles
         ids = get_config("roles").get(str(interaction.guild.id), None)
         L = [role for role in interaction.guild.roles if role.id in ids]
@@ -35,6 +38,9 @@ class Roles(commands.Cog):
     @roles.command(name="add", description="Add yourself roles")
     @app_commands.describe(roles="Roles you want to get")
     async def add(self, interaction: discord.Interaction, roles: str) -> None:
+        if interaction.guild is None:
+            await interaction.response.send_message("This command cannot be used in DMs.")
+            return
         added = await self.process_roles(interaction, roles, interaction.user.add_roles)
         if added is None:
             return
@@ -49,6 +55,9 @@ class Roles(commands.Cog):
     @roles.command(name="remove", description="Remove yourself roles")
     @app_commands.describe(roles="Roles you want to remove")
     async def remove(self, interaction: discord.Interaction, roles: str) -> None:
+        if interaction.guild is None:
+            await interaction.response.send_message("This command cannot be used in DMs.")
+            return
         removed = await self.process_roles(interaction, roles, interaction.user.remove_roles)
         if removed is None:
             return
@@ -68,6 +77,8 @@ class Roles(commands.Cog):
             wanted: List[str],
             negate: bool = False
         ) -> List[str]:
+        if guild is None:
+            return []
         ids = get_config("roles").get(str(guild.id), None)
         keep = lambda role: role.id in ids and (negate ^ (role.name.lower() in wanted))
         return [role.name.lower() for role in guild.roles if keep(role)]
@@ -78,6 +89,9 @@ class Roles(commands.Cog):
             roles: str,
             action: Coroutine[Any, Any, None]
         ) -> List[discord.Role]:
+        if interaction.guild is None:
+            await interaction.response.send_message("This command cannot be used in DMs.")
+            return
         L = [] # List of roles added/removed
         wanted = sorted(list(set(role.strip().lower() for role in roles.split(","))))
 
@@ -112,6 +126,8 @@ class Roles(commands.Cog):
             interaction: discord.Interaction,
             current: str
         ) -> List[app_commands.Choice]:
+        if interaction.guild is None:
+            return []
         wanted = current.lower().split(", ")
         availables = sorted(self.available_roles(interaction.guild, wanted, negate=True))
         
