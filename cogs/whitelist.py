@@ -11,7 +11,7 @@ async def setup(bot: commands.Bot) -> None:
 
 class Whitelist(commands.Cog):
 
-    group = app_commands.Group(name="whitelist", description="Whitelist to the server", guild_ids=[460515591900495873])
+    group = app_commands.Group(name="whitelist", description="Whitelist to the server", guild_ids=[622199790398341150])
     
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
