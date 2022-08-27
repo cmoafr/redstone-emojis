@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 
+from logging import Logger
 import os
 
 from utils.config import get_config
@@ -8,7 +9,8 @@ from utils.logging import get_logger
 
 class Bot(commands.Bot):
 
-    def __init__(self) -> None:
+    def __init__(self, logger: Logger) -> None:
+        self.logger = logger
         def no_prefix(bot: commands.Bot, message: discord.Message) -> str:
             return "<" if message.content.startswith(">") else ">"
         super().__init__(
@@ -55,8 +57,7 @@ def run() -> None:
     logger = get_logger("bot")
 
     logger.info("Initializing bot...")
-    bot = Bot()
-    bot.logger = logger
+    bot = Bot(logger)
 
     try:
         logger.info("Starting bot...")
