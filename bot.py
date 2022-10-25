@@ -55,7 +55,7 @@ def run() -> None:
 
     try:
         logger.info("Starting bot...")
-        bot.run(bot.config["token"])
+        bot.run(bot.config["tokens"]["discord"])
     except Exception as e:
         logger.exception(e)
     finally:
